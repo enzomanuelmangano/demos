@@ -59,5 +59,12 @@ bun run content:watch &          # converts again on every edit under .content/
 bun exact.mjs serve dist         # or: bun run build && bun tools/compose.ts && bun tools/serve.ts --port 4311
 ```
 
-`bun run build` converts and builds. Demo-tied content is not ported (`docs/progress-content.md`): `SKIPPED` in
-`tools/gen-content.ts`.
+`bun run build` converts and builds.
+
+## Demo posts
+
+`.content/demos/<slug>/index.mdx` is `/demos/<slug>` (decisions.md D25), its metadata `index.js` (`title`, `date`,
+`slug`, `tags`). Besides the Markdown above it may use `<Title>`, `<GithubCard>`, `<Demo />` (the video
+`demos/videos/<slug>.mp4` on the reference's CDN, the QR code, the tags, the source), `<ReanimatePromo />`,
+`<GitHubRepoButtons />` and `<SendFeedback />`. The list of posts, and which have a demo in the app, is
+`tools/demos-web/legacy-posts.ts`. `bun tools/parity/post-content.ts` compares each page's text with live's.

@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { allPages, headTags, htmlFile, livePath, renderTags, type PageMetadata } from '../seo/metadata.ts';
 import { jsonLd, jsonLdScript } from '../seo/jsonld.ts';
-import { DEMOS_APP_DESCRIPTION, DEMOS_DESCRIPTION, NOT_PORTED, OG, SITE_URL, loadDemoPosts } from '../seo/site.ts';
+import { DEMOS_APP_DESCRIPTION, DEMOS_DESCRIPTION, OG, SITE_URL, loadDemoPosts } from '../seo/site.ts';
 import { manifestJson, robotsTxt, rssXml, sitemapXml } from '../seo/feeds.ts';
 
 const site = resolve(import.meta.dir, '../..');
@@ -90,12 +90,6 @@ const OWN_COPY: Record<string, { description: string; alt: string }> = {
 };
 /** The three description tags (name=description, og:description, twitter:description). */
 const DESCRIPTIONS = /\|(name=description|property=og:description|name=twitter:description)(\||$)/;
-/**
- * The demo posts (docs/decisions.md D21) differ from live on purpose, in exactly these values: live's og:image
- * (/demos/og-image/<slug>) answers 404, so ours is the /demos card, in the tags and the JSON-LD; and live's description
- * was the site's (the posts had none), ours the post's first paragraph. Live's head is rewritten to those values before
- * the diff, so any other difference, or ours lacking them, still fails.
- */
 function expectedLive(m: PageMetadata, l: Head): Head {
   // /demos and /demos-app have their own copy (owner, 2026-11-24, docs/decisions.md D23: "100+ animations built with
   // Exact, Rust and WebGPU"), not live's: live's description tags and card alt are rewritten to ours, nothing else.
@@ -108,15 +102,8 @@ function expectedLive(m: PageMetadata, l: Head): Head {
     }
     return { tags, ld: l.ld };
   }
-  if (m.jsonLd?.kind !== 'demo') return l;
-  const slug = m.jsonLd.slug, img = (u: string) => u.replace(`${live}/demos/og-image/${slug}`, `${SITE_URL}${OG.demos.url}`).replace(`https://reactiive.io/demos/og-image/${slug}`, `${SITE_URL}${OG.demos.url}`);
-  const tags = new Map<string, number>();
-  for (const [k, n] of l.tags) {
-    let key = img(k);
-    if (DESCRIPTIONS.test(key)) key = key.replace(/content=[^|]*/, `content=${m.description}`);
-    tags.set(key, (tags.get(key) ?? 0) + n);
-  }
-  return { tags, ld: l.ld.map((j) => img(j)) };
+  // The demo posts (D25) have no rewrite: their tags and JSON-LD are live's to the letter.
+  return l;
 }
 function diffHeads(l: Head, o: Head): string[] {
   const out: string[] = [];
@@ -158,14 +145,12 @@ for (const [path, generated, norm] of files) {
     // Items present on both sides compare as lines; a page the port leaves out (NOT_PORTED) is named, not hidden.
     const locs = (s: string) => [...s.matchAll(/<(?:loc|link)>([^<]*)<\/(?:loc|link)>/g)].map((x) => x[1]);
     const [la, lb] = [new Set(locs(l.body)), new Set(locs(text))];
-    // The four articles that present Demos are not ported (owner's scope cut): named, accepted.
-    for (const u of la) if (!lb.has(u) && [...NOT_PORTED].some((n) => u.endsWith(`/articles/${n}`))) la.delete(u);
     for (const u of la) if (!lb.has(u)) lines.push(`  - not in ours: ${u}`);
-    // The demo posts are listed by ours only (live left them out; D21): named, accepted, and all must be there.
+    // The demo posts are listed by ours only (live left them out; D25): named, accepted, and all must be there.
     if (path === '/sitemap.xml') for (const d of loadDemoPosts()) { const u = `${SITE_URL}/demos/${d.slug}`; if (lb.has(u)) lb.delete(u); else lines.push(`  - demo post not listed: ${u}`); }
     for (const u of lb) if (!la.has(u)) lines.push(`  + only in ours: ${u}`);
     if (!lines.length && locs(l.body).filter((u) => la.has(u)).join() !== locs(text).filter((u) => la.has(u)).join()) lines.push('  ~ same URLs, different order');
-    if (!lines.length && !NOT_PORTED.size) { const x = a.filter((s, i) => s !== b[i]); if (x.length) lines.push(`  ~ ${x.length} lines differ, first: ${x[0]}`); }
+    if (!lines.length && path === '/rss.xml') { const x = a.filter((s, i) => s !== b[i]); if (x.length) lines.push(`  ~ ${x.length} lines differ, first: ${x[0]}`); }
   } else {
     a.forEach((s, i) => { if (s !== b[i]) lines.push(`  ~ line ${i + 1}: live ${JSON.stringify(s)} ours ${JSON.stringify(b[i])}`); });
     if (b.length > a.length) lines.push('  + ours has more lines');

@@ -137,6 +137,23 @@ main:has([data-motion~=d-page]) ~ *{visibility:hidden}
 [data-motion~=spiral]{opacity:.4 !important;mask-image:linear-gradient(to right,#000 0%,#000 30%,transparent 55%)}
 }
 @media (min-width:1024px) and (prefers-reduced-motion:reduce){[data-motion~=sim-col]{animation:none}}
+/* A demo post (/demos/<slug>, D25) from 1024 px: the article in the room left of the phone, and /demos's kept frame
+   (app.contract, D17) fixed beside the column while the article scrolls: --ph tall (the window under the header less
+   56 px, 320-780 px), centred in that room; --side is the room it takes (its width and 48 px). The page and its footer
+   give that room up on the right; the footer the kept layer repeats on /demos is not drawn here. */
+@media (min-width:1024px){
+:root:has([data-motion~=sim-keep-layer][data-motion~=post]){--ph:clamp(320px,100dvh - 136px,780px);--side:calc(var(--pw) + 48px)}
+:root:has([data-motion~=post-sim]){--ph:clamp(320px,100dvh - 136px,780px);--side:calc(var(--ph) * .474359 + 48px)}
+main:has([data-motion~=post-sim]),main:has([data-motion~=post-sim]) ~ *{padding-right:var(--side);box-sizing:border-box}
+[data-motion~=sim-keep-layer][data-motion~=post]{display:block}
+[data-motion~=sim-keep-layer][data-motion~=post] [data-motion~=sim-col][data-motion~=sim-keep]{position:fixed;top:calc(80px + max(0px,(100dvh - 80px - var(--ph)) / 2));right:max(24px,(100% - 48rem - var(--side)) / 2 + 24px)}
+[data-motion~=sim-keep-layer][data-motion~=post] [data-motion~=sim-col]::after{display:none}
+/* No still on a post: it would be the page's largest paint, after the text. The phone's outline is a vector
+   (components/phone-bezel.contract), which is never one; the app draws its screen in it. */
+[data-motion~=sim-keep-layer][data-motion~=post] [data-motion~=sim-still]{background:none}
+[data-motion~=sim-bezel]{position:absolute;left:50%;top:50%;translate:-50% -50%;height:var(--ph);width:calc(var(--ph) * .480769);pointer-events:none}
+[data-motion~=sim-keep-layer][data-motion~=post] [data-motion~=sim-keep-footer]{display:none}
+}
 /* /demos's TestFlight link (pages/demos.contract TestFlightLink): its QR code shows under it on hover or focus, from
    1024 px with a mouse, to scan with the phone; enters 200 ms (strong ease-out, from 96 % at its corner), leaves 150 ms. */
 [data-motion~=d-tf-qr]{display:none}

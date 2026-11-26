@@ -16,7 +16,7 @@
   const FRAMED = window.parent !== window;
   if (FRAMED) {
     const HOME = new URL(location.href).origin;
-    let parentOrigin = null;
+    let parentOrigin = null, siteOrigin = null;
     const post = (m) => { if (parentOrigin) try { window.parent.postMessage(m, parentOrigin); } catch {} };
     // ---- The frame's history, which is the page's (joint) ----
     // The router (navigation.js) moves through its own entries with pushState, replaceState and history.go; each
@@ -92,7 +92,7 @@
     addEventListener('message', (e) => {
       const m = e.data;
       if (e.source !== window.parent || e.origin !== HOME || !m) return;
-      if (m.demos === 'page') { page.current = m.current !== false; page.visible = m.visible !== false; return; }
+      if (m.demos === 'page') { siteOrigin = e.origin; page.current = m.current !== false; page.visible = m.visible !== false; return; }
       if ((m.demos !== 'rect' && m.demos !== 'press') || typeof m.target !== 'string' || !/^[a-z0-9-]{1,80}$/.test(m.target)) return;
       parentOrigin = e.origin;
       const el = document.querySelector(`[data-testid="${m.target}"]`);
@@ -132,7 +132,8 @@
       // The launcher is the app's once its pager is driven (the drive marks the track).
       if (!(await until(() => track()?.style.willChange === 'transform', 20000, live))) return live() && report('stopped');
       if (openSlug()) {
-        if (openSlug() === slug) { gotoOpened = slug; return report('opened'); }
+        // Left as it is: one the reader opened ("Read article" from inside it) is not the goto's to close.
+        if (openSlug() === slug) return report('opened');
         closeOpen();
         if (!(await until(() => !openSlug() && !document.querySelector('[data-testid="web-card"]'), 4000, live))) return live() && report('stopped');
         await later(120);
@@ -182,6 +183,113 @@
       if (gotoOpened && openSlug() === gotoOpened) closeOpen();
       gotoOpened = '';
     });
+
+    // ---- "Read article" (.site/docs/decisions.md D25) ----
+    // The app's menus offer it for a demo with an article (`window.__reactiiveArticles`, written by tools/compose.ts),
+    // once the page that frames this app has spoken. Picking it asks that page (`{ demos: 'read', slug }`, to its origin
+    // only), which goes to the demo's post as a link would (web/sim-goto.js). The icons' long-press menu is the app's
+    // own (a compose-time patch adds the item, tools/demos-web/patches.ts, through `__siteArticle`). A search result and
+    // an open demo have no menu in the app, so theirs is drawn here with the icons' menu's look: a search result's on a
+    // right click or a long press, an open demo's on a right click alone (a long press there is the demo's gesture).
+    const ARTICLES = new Set(window.__reactiiveArticles || []);
+    const readable = (slug) => !!siteOrigin && ARTICLES.has(slug);
+    const read = (slug) => { if (readable(slug)) window.parent.postMessage({ demos: 'read', slug }, siteOrigin); };
+    window.__siteArticle = { has: readable, read };
+    let menu = null, hold = null, pointer = 'mouse';
+    const closeMenu = () => {
+      const m = menu; menu = null;
+      if (!m) return;
+      const done = () => { m.host.remove(); if (m.img) m.img.style.visibility = ''; };
+      m.panel.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.9)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
+      m.back.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: 'ease-in', fill: 'forwards' }).finished.then(done, done);
+    };
+    // The menu over the phone's display (420 x 912 pt, scaled as the display is): by `img` (lifted, as a pressed icon),
+    // else at the point clicked.
+    const openMenu = (slug, name, img, x, y) => {
+      const screen = document.querySelector('[data-testid="web-device"]');
+      if (menu || !screen) return;
+      const W = 420, H = 912, sr = screen.getBoundingClientRect(), k = sr.width / W || 1;
+      const host = document.createElement('div');
+      host.dataset.testid = 'read-menu';
+      host.style.cssText = `position:fixed;z-index:2147483000;overflow:hidden;transform-origin:0 0;left:${sr.left}px;top:${sr.top}px;width:${W}px;height:${H}px;transform:scale(${k});border-radius:62px`;
+      const root = host.attachShadow({ mode: 'open' });
+      root.innerHTML = `<style>*{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+.bd{position:absolute;inset:0;background:rgba(0,0,0,.22);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%)}
+.lift{position:absolute;box-shadow:0 14px 34px rgba(0,0,0,.42),0 3px 8px rgba(0,0,0,.25);transform:scale(1.06)}
+.m{position:absolute;width:250px;border-radius:14px;overflow:hidden;background:rgba(48,48,52,.72);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:0 18px 50px rgba(0,0,0,.35);color:#fff}
+.t{padding:10px 16px 8px;font-size:13px;color:rgba(235,235,245,.6);text-align:center;border-bottom:.5px solid rgba(255,255,255,.14)}
+.r{all:unset;display:flex;align-items:center;justify-content:space-between;width:100%;box-sizing:border-box;padding:11px 16px;font-size:17px;cursor:pointer}
+.r:active,.r:hover{background:rgba(255,255,255,.1)}</style><div class="bd"></div><div class="m" role="menu"><div class="t"></div><button class="r" role="menuitem" data-k="article"><span>Read article</span><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.2C8.4 4 6.2 3.6 3.2 3.8V15.4C6.2 15.2 8.4 15.6 10 16.8C11.6 15.6 13.8 15.2 16.8 15.4V3.8C13.8 3.6 11.6 4 10 5.2ZM10 5.2V16.6"/></svg></button></div>`;
+      const back = root.querySelector('.bd'), panel = root.querySelector('.m'), mh = 89, gap = 14;
+      root.querySelector('.t').textContent = name;
+      let f = { x: (x - sr.left) / k, y: (y - sr.top) / k, w: 0, h: 0 };
+      if (img) {
+        const r = img.getBoundingClientRect();
+        f = { x: (r.left - sr.left) / k, y: (r.top - sr.top) / k, w: r.width / k, h: r.height / k };
+        const lift = img.cloneNode();
+        lift.className = 'lift';
+        Object.assign(lift.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
+        root.insertBefore(lift, panel);
+        lift.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }], { duration: 320, easing: 'cubic-bezier(.32,.72,0,1)' });
+        img.style.visibility = 'hidden';
+      }
+      const below = f.y + f.h + gap + mh < H - 40;
+      const left = Math.min(Math.max(16, f.x), W - 266);
+      const top = below ? f.y + f.h + (img ? gap : 4) : f.y - mh - (img ? gap : 4);
+      panel.style.left = `${left}px`;
+      panel.style.top = `${top}px`;
+      panel.style.transformOrigin = `${f.x + f.w / 2 - left}px ${below ? 0 : mh}px`;
+      document.body.append(host);
+      back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' });
+      panel.animate([{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 340, easing: 'cubic-bezier(.32,.72,0,1)' });
+      menu = { host, back, panel, img, at: performance.now() };
+      back.addEventListener('click', closeMenu);
+      root.querySelector('.r').addEventListener('click', () => { closeMenu(); read(slug); });
+    };
+    // A search result under the event (the app's search draws its rows in its own shadow root).
+    const rowOf = (path) => (path.some((n) => n.dataset?.testid === 'search') ? path.find((n) => n.classList?.contains('row') && n.dataset.slug) : null);
+    const rowMenu = (row) => openMenu(row.dataset.slug, row.querySelector('span')?.textContent ?? row.dataset.slug, row.querySelector('img'), 0, 0);
+    const dropHold = () => { if (hold) clearTimeout(hold.timer); hold = null; };
+    addEventListener('pointerdown', (e) => {
+      if (!e.isTrusted) return;
+      pointer = e.pointerType;
+      dropHold();
+      if (menu || e.pointerType === 'mouse') return;
+      const row = rowOf(e.composedPath());
+      if (!row || !readable(row.dataset.slug)) return;
+      const h = hold = { id: e.pointerId, x: e.clientX, y: e.clientY, fired: false, timer: setTimeout(() => { h.fired = true; rowMenu(row); }, 500) };
+    }, true);
+    addEventListener('pointermove', (e) => { if (hold && !hold.fired && e.pointerId === hold.id && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 10) dropHold(); }, true);
+    // The release of a press that opened the menu is not a tap on the row.
+    for (const type of ['pointerup', 'pointercancel']) addEventListener(type, (e) => {
+      if (!hold || e.pointerId !== hold.id) return;
+      if (hold.fired) {
+        const swallow = (c) => { c.stopImmediatePropagation(); c.preventDefault(); };
+        addEventListener('click', swallow, { capture: true, once: true });
+        setTimeout(() => removeEventListener('click', swallow, true), 400);
+      }
+      dropHold();
+    }, true);
+    addEventListener('contextmenu', (e) => {
+      const take = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+      // A touch browser's own long-press event lands on the menu just opened; a later right click closes it.
+      if (menu) { take(); if (performance.now() - menu.at > 800) closeMenu(); return; }
+      const path = e.composedPath(), row = rowOf(path);
+      if (row) {
+        if (!readable(row.dataset.slug)) return;
+        take();
+        if (hold) { clearTimeout(hold.timer); hold.fired = true; }
+        return rowMenu(row);
+      }
+      const slug = openSlug();
+      if (!slug || !readable(slug) || (e.pointerType || pointer) !== 'mouse') return;
+      if (!path.some((n) => n.dataset?.testid === 'web-device') || path.some((n) => n.matches?.('input,textarea,select,[contenteditable]'))) return;
+      take();
+      openMenu(slug, document.querySelector(`[data-testid="icon-${slug}"]`)?.getAttribute('aria-label') ?? slug, null, e.clientX, e.clientY);
+    }, true);
+    addEventListener('keydown', (e) => { if (menu && e.key === 'Escape') { e.stopImmediatePropagation(); closeMenu(); } }, true);
+    addEventListener('popstate', closeMenu);
+    addEventListener('resize', closeMenu);
   }
   // In a sandboxed frame (an opaque origin: reactiive.io's /demos, which draws the phone's rim, keys and shadow itself
   // under the frame, from a still) the desktop frame draws only its display: the stage, the rim, the glass and the

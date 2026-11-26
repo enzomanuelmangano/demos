@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 // Links and redirects of the composed site, served (tools/serve.ts or a preview): every internal URL the site's built
 // pages, sitemap.xml, rss.xml and manifest.json name answers 200 (redirects followed), and the legacy URLs answer as
-// docs/decisions.md D5 / D13 / D21 say. The Demos app's own files under /demos/app/ are its build's, not crawled.
+// docs/decisions.md D25 says. The Demos app's own files under /demos/app/ are its build's, not crawled.
 //   bun tools/parity/links.ts <origin> [--out .vercel/output]      (exit 1 on any failure)
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { DEMO_POSTS, NOT_IN_APP } from '../demos-web/legacy-posts.ts';
-import { NOT_PORTED_REDIRECTS } from '../seo/site.ts';
+import { loadDemoPosts } from '../seo/site.ts';
 
 const args = process.argv.slice(2);
 const origin = (args[0] ?? 'http://127.0.0.1:4310').replace(/\/$/, '');
@@ -52,15 +52,16 @@ const expect = async (path: string, status: number, location?: string) => {
   else if (status >= 300 && status < 400) { const t = await fetch(origin + path); if (t.status !== 200) fail(`${path} → ${loc} lands on ${t.status}`); }
 };
 let n = 0;
-for (const d of DEMO_POSTS) {
-  await expect(`/demos/${d.slug}`, 200); await expect(`/demos/${d.slug}/`, 308, `/demos/${d.slug}`); n += 2;
+for (const d of loadDemoPosts()) {
+  await expect(`/demos/${d.slug}`, 200); await expect(`/demos/${d.slug}/`, 308, `/demos/${d.slug}`); await expect(`/demos/og-image/${d.slug}`, 200); n += 3;
   const html = await (await fetch(`${origin}/demos/${d.slug}`)).text();
   if (!html.includes(`<link rel="canonical" href="`) || !html.includes(`/demos/${d.slug}"`)) fail(`/demos/${d.slug}: no canonical to itself`);
-  if (!html.includes(`href="/demos/app/demo/${d.app}"`)) fail(`/demos/${d.slug}: the phone's button does not open /demos/app/demo/${d.app}`);
+  if (!html.includes(`demos/videos/${d.slug}.mp4`)) fail(`/demos/${d.slug}: no demo video`);
+  if (d.app ? !html.includes(`href="/demos/app/demo/${d.app}"`) : html.includes('href="/demos/app/demo/')) fail(`/demos/${d.slug}: the try button is ${d.app ? 'missing' : 'there without a demo'}`);
 }
-for (const s of NOT_IN_APP) { await expect(`/demos/${s}`, 307, '/demos'); await expect(`/demos/${s}/`, 307, '/demos'); n += 2; }
-for (const [from, to] of Object.entries(NOT_PORTED_REDIRECTS)) { await expect(from, 308, to); n++; }
+// Live's 200s that were redirects here until D25: pages (and the signed-out account routes) answer 200.
+for (const p of ['/articles/building-demos', '/articles/open-sourcing-demos', '/articles/leaving-patreon', '/articles/patreon-migration', '/series/thoughts', '/series/engineering', '/profile', '/manage-subscription']) { await expect(p, 200); n++; }
 await expect('/demos/app', 308, '/demos/app/'); await expect('/demos/not-a-post', 404); await expect('/demos/app/demo/snake', 200); n += 3;
-console.log(`redirects: ${n} legacy URLs checked (${DEMO_POSTS.length} demo posts are pages, ${NOT_IN_APP.length} 307 to /demos, ${Object.keys(NOT_PORTED_REDIRECTS).length} 308)`);
+console.log(`legacy: ${n} URLs checked (${DEMO_POSTS.length} demo posts with their demo, ${NOT_IN_APP.length} without)`);
 if (fails.length) { console.error(`links: ${fails.length} failure(s)`); process.exit(1); }
 console.log('links: none broken');

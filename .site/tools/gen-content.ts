@@ -7,10 +7,9 @@
 //
 //   bun tools/gen-content.ts [--refresh-repos]
 //
-// Writes content-gen/ (captured by Exact, gitignored): articles/<slug>.ts, docs/<slug>.ts, index.ts (a loader per
-// page, the slug lists and the article cards); and assets/content/<kind>/<slug>/… (the images, WebP where smaller,
+// Writes content-gen/ (captured by Exact, gitignored): articles/<slug>.ts, docs/<slug>.ts, posts/demo-<slug>.ts (the
+// demo posts, /demos/<slug>, D25), index.ts (a loader per page, the slug lists and the article cards); and assets/content/<kind>/<slug>/… (the images, WebP where smaller,
 // gitignored). An MDX construct the converter does not know fails the build, naming the file and line.
-// Demo-tied content is out of scope (owner, docs/progress-content.md): SKIPPED below.
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkMdx from 'remark-mdx';
@@ -31,9 +30,9 @@ const OUT = join(SITE, '.content-gen.next');
 const ASSETS = join(SITE, 'assets/content');
 const ASSET_URL = '/assets/content';
 
-// The owner's scope cut (docs/progress-content.md): articles that present Demos are not ported. One list, shared
-// with the SEO files (tools/seo: head, JSON-LD, sitemap and RSS read the same .content/ index.json files).
-import { NOT_PORTED as SKIPPED, loadDemoPosts } from './seo/site.ts';
+// The demo posts' frontmatter, shared with the SEO files (tools/seo: head, JSON-LD, sitemap).
+import { loadDemoPosts, type DemoPost } from './seo/site.ts';
+import qrcode from 'qrcode-generator';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Syntax highlighting: prism-react-renderer's Prism with the languages the reference loads (code-highlight.tsx
@@ -77,7 +76,7 @@ const PLUS = dict(themePlus), TERM = dict(terminalTheme);
 // coloured by the CSS Custom Highlight API, so a content page's runtime adopts a node per segment, not per token
 // (docs/decisions.md D16). Same glyphs at the same places. The letters: PALETTE (`_` the block's own colour).
 const SEP = '\uE000', SPEC = '\uE001';
-const PALETTE: Record<string, string> = { '': '_', '#abb2bf': 'a', '#4b9fe4': 'f', '#c678dd': 'k', '#d19a66': 'n', '#e5c07b': 'y', '#e06c75': 's', '#8b919d/i': 'c', '#f2f5f7': 'w', 'rgb(98, 114, 164)': 't' };
+const PALETTE: Record<string, string> = { '': '_', '#abb2bf': 'a', '#4b9fe4': 'f', '#c678dd': 'k', '#d19a66': 'n', '#e5c07b': 'y', '#e06c75': 's', '#8b919d/i': 'c', '#f2f5f7': 'w', 'rgb(98, 114, 164)': 't', '#56b6c2': 'r' };
 type Line = string;
 
 function highlight(raw: string, langIn: string, meta: string): { lang: string; terminal: boolean; diff: boolean; lines: Line[] } {
@@ -266,7 +265,7 @@ const DEMOS: Record<string, Record<string, Record<string, DemoProp>>> = {
 const BOXED = new Set(['bottom-sheet-animation', 'css-animations-react-native']);
 
 // The X posts' frame heights on live (iframe rect, tools/parity/shoot.ts), [550 px column, 342 px column].
-const TWEETS: Record<string, [number, number]> = { '1954286123406262280': [817, 625] };
+const TWEETS: Record<string, [number, number]> = { '1954286123406262280': [817, 625], '1837499524241412342': [801, 568], '1742519413641760804': [1511, 1118] };
 
 function slugger() {
   const seen = new Map<string, number>();
@@ -291,9 +290,34 @@ const attr = (n: any, name: string): string => {
   return v.replace(/^['"`](.*)['"`]$/s, '$1');
 };
 
-type Page = { kind: 'articles' | 'docs'; slug: string; file: string };
+type Page = { kind: 'articles' | 'docs' | 'demos'; slug: string; file: string };
+
+// ---------------------------------------------------------------------------------------------------------------
+// The demo posts (D25). Their code is the React Native app's, which moved to .legacy/ in the repo: the live links to
+// src/animations/<name> answer 404, so they point at where that source is now (four folders were renamed or are gone).
+const REPO = 'https://github.com/enzomanuelmangano/demos';
+const LEGACY_DIRS: Record<string, string> = { 'empty-qr-code': 'empty-qrcode', 'qr-code-generator': 'qrcode', 'shared-transitions': 'shared-transition', 'inner-shared-transition': '' };
+const legacySource = (name: string) => `${REPO}/tree/main/.legacy/src/animations/${LEGACY_DIRS[name] ?? name}`.replace(/\/$/, '');
+
+// The demo's QR code (the reference's StyledQRCode, level H: soft squares, ringed finders), an SVG made at build.
+function qrSvg(value: string): string {
+  const qr = qrcode(0, 'H');
+  qr.addData(value);
+  qr.make();
+  const n = qr.getModuleCount(), F = 7;
+  const band = (v: number, s: number) => v >= s && v < s + F;
+  const finder = (r: number, c: number) => (band(r, 0) && band(c, 0)) || (band(r, 0) && band(c, n - F)) || (band(r, n - F) && band(c, 0));
+  const f = (v: number) => String(Math.round(v * 1e4) / 1e4);
+  let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (!finder(r, c) && qr.isDark(r, c)) d += `M${f(c + 0.36)} ${f(r + 0.1)}h.28a.26.26 0 0 1 .26.26v.28a.26.26 0 0 1-.26.26h-.28a.26.26 0 0 1-.26-.26v-.28a.26.26 0 0 1 .26-.26z`;
+  const eyes = [[0, 0], [n - F, 0], [0, n - F]].map(([x, y]) => `<rect x="${x + 0.5}" y="${y + 0.5}" width="${F - 1}" height="${F - 1}" rx="2.1" fill="none" stroke="#e0e0e0" stroke-width="1"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" rx="1" fill="#e0e0e0"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}"><path fill="#e0e0e0" d="${d}"/>${eyes}</svg>`;
+}
+// The reference's demo video (config/media.ts getDemoVideoUrl, its production CDN: the URL the live pages name).
+const videoUrl = (slug: string) => `https://pub-4f02f6295cfb4d38ad95eef187b3610d.r2.dev/demos/videos/${slug}.mp4`;
 
 async function convert(page: Page, meta: any) {
+  const post: DemoPost | null = page.kind === 'demos' ? meta : null;
   const text = readFileSync(page.file, 'utf8');
   const tree: any = unified().use(remarkParse).use(remarkMdx).use(remarkGfm).parse(text);
   const where = (n: any) => `${relative(SITE, page.file)}:${n.position?.start?.line ?? '?'}`;
@@ -331,10 +355,18 @@ async function convert(page: Page, meta: any) {
         case 'delete': out.push(...runs(n.children, style)); break;
         case 'inlineCode': push(n.value, { code: true }); break;
         case 'break': push('\n'); break;
+        case 'mdxTextExpression': {
+          // A literal in braces (`windowSize={2}`) reads as its value, as MDX evaluates it; anything else fails.
+          const m = String(n.value).trim().match(/^(?:(-?[\d.]+)|(['"`])(.*)\2)$/s);
+          if (!m) throw new Error(`${where(n)}: an expression {${n.value}} is not known to the converter`);
+          push(m[1] ?? m[3]);
+          break;
+        }
         case 'link': {
           const element = n.children.length === 1 && n.children[0].type !== 'text';
           const brand = element && BRAND.some((r) => r.test(plain(n.children[0]).trim()));
-          out.push(...runs(n.children, { ...style, href: n.url, brand }));
+          // A link within the site loses its trailing slash, as live's router writes it (and the page routes it in place).
+          out.push(...runs(n.children, { ...style, href: String(n.url).replace(/^(\/.+?)\/$/, '$1'), brand }));
           break;
         }
         case 'mdxJsxTextElement':
@@ -360,6 +392,18 @@ async function convert(page: Page, meta: any) {
     block({ kind: 'image', depth, src: a.url, width: a.width, height: a.height, text: n.alt ?? '', mb: 20 });
   };
 
+  // A paragraph with pictures among its words (leaving-patreon's list items): its text, each picture on a line of its
+  // own, the text after it. The line breaks around a picture are the picture's own.
+  const pieces = (nodes: any[]): any[][] => {
+    const out: any[][] = [[]];
+    for (const n of nodes) if (n.type === 'image') out.push([n], []); else out[out.length - 1].push(n);
+    const blank = (n: any) => n.type === 'break' || (n.type === 'mdxJsxTextElement' && n.name === 'br') || (n.type === 'text' && !n.value.trim());
+    return out.map((p) => { const q = [...p]; while (q.length && blank(q[0])) q.shift(); while (q.length && blank(q[q.length - 1])) q.pop(); return q; }).filter((p) => p.length);
+  };
+  const after = (rest: any[][], depth: number) => {
+    for (const p of rest) if (p[0].type === 'image') image(p[0], depth); else block({ kind: 'paragraph', depth, runs: runs(p), mb: 20 });
+  };
+
   // A list: its items flattened into `item` blocks (depth = nesting), an item's further children indented under it.
   // Spacing as the reference's CSS gives it: an `ul` has margin-bottom 1.25em; a loose item (`li:has(> p)`) is a
   // flow root holding its paragraphs' margins, so its list's margin adds to them; a tight item lets a nested list's
@@ -369,7 +413,9 @@ async function convert(page: Page, meta: any) {
     for (const item of n.children) {
       const [first, ...rest] = item.children;
       const head = first?.type === 'paragraph' ? first : null;
-      block({ kind: 'item', depth, loose, runs: head ? runs(head.children) : [], mb: loose ? 20 : 0 });
+      const [lead = [], ...tail] = head ? pieces(head.children) : [];
+      block({ kind: 'item', depth, loose, runs: runs(lead), mb: loose ? 20 : 0 });
+      after(tail, depth + 1);
       walk(head ? rest : item.children, depth + 1, loose);
     }
     const last = blocks[blocks.length - 1];
@@ -423,7 +469,7 @@ async function convert(page: Page, meta: any) {
         case 'mdxFlowExpression': if (!/^\s*\/\*[\s\S]*\*\/\s*$/.test(n.value)) throw new Error(`${where(n)}: an expression {${n.value}} is not known to the converter`); break;
         case 'heading': {
           const id = slug(plain(n));
-          const mt = [0, 0, 40, 29.75, 0][n.depth] ?? 0, mb = [0, 0, 10, 8.5, 8][n.depth] ?? 8;
+          const mt = [0, 40, 40, 29.75, 0][n.depth] ?? 0, mb = [0, 10, 10, 8.5, 8][n.depth] ?? 8;
           block({ kind: 'heading', depth: n.depth, href: id, runs: runs(n.children), mt, mb, lang: String(depth) });
           break;
         }
@@ -439,6 +485,7 @@ async function convert(page: Page, meta: any) {
             if (blocks[blocks.length - 1].kind !== 'math') blocks[blocks.length - 1].mb += inLoose || depth === 0 ? 20 : 0;
             break;
           }
+          if (parts.some((c: any) => c.type === 'image')) { after(pieces(n.children), depth); break; }
           block({ kind: 'paragraph', depth, runs: runs(n.children), mb: inLoose || depth === 0 ? 20 : 0 });
           break;
         }
@@ -457,8 +504,9 @@ async function convert(page: Page, meta: any) {
           if (name === 'Title') { block({ kind: 'title', text: plain(n).trim().replace(/\s+/g, ' '), title: longDate(attr(n, 'date')) }); break; }
           if (name === 'GithubCard') {
             const repo = attr(n, 'repo'), path = attr(n, 'path'), r = repos[repo];
-            const url = r ? (path ? `${r.html_url}/tree/main/${path}` : r.html_url) : path ? `https://github.com/${repo}/tree/main/${path}` : `https://github.com/${repo}`;
-            block({ kind: 'github', depth, href: url, mb: 24, repo: [r ? { name: r.name, owner: r.owner.login, path: path ? path.split('/').pop()! : '', description: r.description ?? '', language: r.language ?? '', stars: fmtCount(r.stargazers_count), forks: fmtCount(r.forks_count), avatar: `${r.owner.avatar_url}&s=80`, url } : { ...NO_REPO, name: repo, url }] });
+            const moved = repo === 'enzomanuelmangano/demos' ? path.match(/^src\/animations\/([a-z0-9-]+)\/?$/)?.[1] : undefined;
+            const url = moved ? legacySource(moved) : r ? (path ? `${r.html_url}/tree/main/${path}` : r.html_url) : path ? `https://github.com/${repo}/tree/main/${path}` : `https://github.com/${repo}`;
+            block({ kind: 'github', depth, href: url, mb: 24, repo: [r ? { name: r.name, owner: r.owner.login, path: path ? path.split('/').pop()! : '', description: r.description ?? '', language: moved ? 'TypeScript' : r.language ?? '', stars: fmtCount(r.stargazers_count), forks: fmtCount(r.forks_count), avatar: `${r.owner.avatar_url}&s=80`, url } : { ...NO_REPO, name: repo, url }] });
             break;
           }
           if (name === 'YouTubeEmbed') { block({ kind: 'youtube', depth, text: attr(n, 'videoId'), height: 400 }); break; }
@@ -475,6 +523,20 @@ async function convert(page: Page, meta: any) {
           }
           if (name === 'BlockMath') { const m = mathFile(plain(n), true); block({ kind: 'math', depth, src: m.src, width: m.width, height: m.height }); break; }
           if (name === 'InlineMath') { const m = mathFile(plain(n), false); block({ kind: 'paragraph', depth, runs: [{ text: '', code: false, strong: false, em: false, href: '', brand: false, math: m.src, width: m.width, height: m.height, valign: m.valign }], mb: 20 }); break; }
+          // The demo posts' own components (the reference's app/demos/[post] `demoComponents`, and ReanimatePromo).
+          if (post && name === 'Demo') {
+            // The video, the QR code to the app, the libraries and the source (components/demo-post.contract):
+            // `src` the video, `href` the React Native source, `title` the app's demo ('' when it has none), `text`
+            // the libraries, `lang` the post.
+            const dir = join(ASSETS, page.kind, page.slug);
+            mkdirSync(dir, { recursive: true });
+            writeFileSync(join(dir, 'qr.svg'), qrSvg(`http://app.reactiive.io/animations/${page.slug}`));
+            block({ kind: 'media', lang: page.slug, src: videoUrl(page.slug), href: legacySource(page.slug), title: post.app, text: post.tags.join(',') });
+            break;
+          }
+          if (post && name === 'ReanimatePromo') { block({ kind: 'promo' }); break; }
+          if (post && name === 'GitHubRepoButtons') { block({ kind: 'support' }); break; }
+          if (post && name === 'SendFeedback') { block({ kind: 'feedback', text: page.slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }); break; }
           if (imported.has(name)) {
             if (!DEMOS[page.slug]) throw new Error(`${where(n)}: <${name}>: ${page.slug} has no ported demos (DEMOS in tools/gen-content.ts)`);
             demo(n, depth, false);
@@ -525,6 +587,7 @@ if (process.argv.includes('--watch')) {
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(join(OUT, 'articles'), { recursive: true });
 mkdirSync(join(OUT, 'docs'), { recursive: true });
+mkdirSync(join(OUT, 'posts'), { recursive: true });
 
 // index.json, the article's frontmatter, as the reference writes it: these fields, no others.
 const FIELDS: Record<string, (v: unknown) => boolean> = {
@@ -552,7 +615,6 @@ function checkMeta(slug: string, meta: any) {
 const DOC_TITLES: Record<string, string> = { terms: 'Terms of Service', privacy: 'Privacy Policy', license: 'License' };
 const articles: any[] = [];
 for (const slug of readdirSync(join(SRC, 'articles')).sort()) {
-  if (SKIPPED.has(slug)) continue;
   if (!existsSync(join(SRC, 'articles', slug, 'index.mdx'))) throw new Error(`.content/articles/${slug}: no index.mdx`);
   const meta = JSON.parse(readFileSync(join(SRC, 'articles', slug, 'index.json'), 'utf8'));
   checkMeta(slug, meta);
@@ -569,6 +631,12 @@ for (const slug of readdirSync(join(SRC, 'docs')).sort()) {
   writeFileSync(join(OUT, 'docs', `${slug}.ts`), `export default ${JSON.stringify({ slug, title: DOC_TITLES[slug] ?? slug, description: '', image: '', date: '', tags: [], blocks })};\n`);
   docs.push(slug);
 }
+// The demo posts: `demo-<slug>`, so their chunks never share an article's name (web/preloads.js holds `demo-*`).
+const posts = loadDemoPosts();
+for (const post of posts) {
+  const blocks = await convert({ kind: 'demos', slug: post.slug, file: join(SRC, 'demos', post.slug, 'index.mdx') }, post);
+  writeFileSync(join(OUT, 'posts', `demo-${post.slug}.ts`), `export default ${JSON.stringify({ slug: post.slug, title: post.title, description: '', image: '', date: post.date, tags: post.tags, blocks })};\n`);
+}
 const series = [...new Set(articles.map((a) => a.series).filter(Boolean))].sort();
 const cards = articles.map(({ date, ...a }, i) => ({ id: a.slug, ...a, index: i }));
 writeFileSync(join(OUT, 'cards.ts'), `export default ${JSON.stringify(cards)};\n`);
@@ -578,9 +646,10 @@ writeFileSync(join(OUT, 'index.ts'), [
   `export const docSlugs: string[] = ${JSON.stringify(docs)};`,
   `export const seriesSlugs: string[] = ${JSON.stringify(series)};`,
   `export const seriesTitles: Record<string, string> = ${JSON.stringify(Object.fromEntries(series.map((s) => [s, titleCase(s)])))};`,
-  // The demo posts kept as pages (decisions.md D21): /demos/<slug>, its title, and the app's slug its phone opens.
-  `export const demoPostSlugs: string[] = ${JSON.stringify(loadDemoPosts().map((d) => d.slug))};`,
-  `export const demoPosts: Record<string, { title: string; app: string }> = ${JSON.stringify(Object.fromEntries(loadDemoPosts().map((d) => [d.slug, { title: d.title, app: d.app }])))};`,
+  // The demo posts (decisions.md D25): /demos/<slug>, and the app's slug its phone opens ('' when it has none).
+  `export const demoPostSlugs: string[] = ${JSON.stringify(posts.map((d) => d.slug))};`,
+  `export const demoApps: Record<string, string> = ${JSON.stringify(Object.fromEntries(posts.map((d) => [d.slug, d.app])))};`,
+  `export const posts: Record<string, () => Promise<{ default: unknown }>> = {\n${posts.map((d) => `  ${JSON.stringify(d.slug)}: () => import('./posts/demo-${d.slug}.ts'),`).join('\n')}\n};`,
   "export const cards = () => import('./cards.ts');",
   `export const articles: Record<string, () => Promise<{ default: unknown }>> = {\n${articles.map((a) => `  ${JSON.stringify(a.slug)}: () => import('./articles/${a.slug}.ts'),`).join('\n')}\n};`,
   `export const docs: Record<string, () => Promise<{ default: unknown }>> = {\n${docs.map((d) => `  ${JSON.stringify(d)}: () => import('./docs/${d}.ts'),`).join('\n')}\n};`,
@@ -592,4 +661,4 @@ rmSync(OLD, { recursive: true, force: true });
 if (existsSync(FINAL)) renameSync(FINAL, OLD);
 renameSync(OUT, FINAL);
 rmSync(OLD, { recursive: true, force: true });
-console.log(`content: ${articles.length} articles (${SKIPPED.size} skipped: demo-tied), ${docs.length} docs, ${series.length} series; interactive in ${INTERACTIVE_ARTICLES.size} articles`);
+console.log(`content: ${articles.length} articles, ${posts.length} demo posts, ${docs.length} docs, ${series.length} series; interactive in ${INTERACTIVE_ARTICLES.size} articles`);

@@ -5,6 +5,8 @@ components. The other agent (branch `site`) owns the shell, static pages and sha
 
 ## Scope cut (owner, 2026-11-23): content tied to Demos is not ported
 
+**Reverted on 2026-11-26** (decisions.md D25): everything listed as skipped below is ported.
+
 "All the content and articles tied to demos are no longer needed now." Classification, for the owner to verify:
 
 ### Skipped (demo-related)

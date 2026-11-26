@@ -64,7 +64,7 @@
    browsers pay the nodes. */
 (function () {
   var api = !!(window.CSS && CSS.highlights && window.Highlight && window.StaticRange) && !/[?&]hl=spans(&|$)/.test(location.search);
-  var sets = {}, letters = 'afknyswt', painted = new WeakMap();
+  var sets = {}, letters = 'afknyswtr', painted = new WeakMap();
   if (api) for (var i = 0; i < letters.length; i++) { sets[letters[i]] = new Highlight(); CSS.highlights.set('tok-' + letters[i], sets[letters[i]]); }
   function spans(el) {
     var node = el.firstChild;
@@ -174,7 +174,10 @@ document.addEventListener('click', function (e) {
    demo's frame and the embeds carry none. Once the page is parsed, an idle callback starts it as Exact's capture
    script does (the checkpoint's entry module, its answers fetched beside it); if the reader scrolled in the last
    250 ms it waits for the scroll to settle and tries again, so the start (one task: the view tree and the adoption)
-   lands between scrolls, before the reader reaches a demo. A press before then starts it at once (Exact's capture). */
+   lands between scrolls, before the reader reaches a demo. A press before then starts it at once (Exact's capture).
+   A demo post with its phone beside it (/demos/<slug> from 1024 px, D25) is such a page too: its runtime, which frames
+   the app, starts the same way but only once the page has loaded, so the article is read first. Under 1024 px, and on a
+   post without a phone, nothing starts it before the reader's press. */
 (function () {
   var last = -1e9, x, waiting = false, settle = 0, still = 0;
   addEventListener('scroll', function () {
@@ -186,7 +189,9 @@ document.addEventListener('click', function (e) {
   // Amended (final sweep): only when a demo is within 2.5 viewports below or 1.5 above. A page whose demos are further
   // down (introduction-to-reanimated's first at 5 viewports) waits: each time the reader's scroll settles (250 ms
   // without one) it looks again, so the start still lands between scrolls, before the demo is reached.
+  function phone() { return matchMedia('(min-width: 1024px)').matches && !!document.querySelector('[data-motion~=post-sim]'); }
   function near() {
+    if (phone()) return true;
     var h = innerHeight;
     return [].some.call(document.querySelectorAll('[data-motion~=demo]'), function (d) { var r = d.getBoundingClientRect(); return r.top < h * 2.5 && r.bottom > -h * 1.5; });
   }
@@ -197,7 +202,7 @@ document.addEventListener('click', function (e) {
   function take() {
     c = document.querySelector('script[type="application/vnd.exact.checkpoint"]');
     x = self.exact = self.exact || {};
-    if (!c || x.ready || c.dataset.activate != 'interaction' || !document.querySelector('[data-motion~=demo]')) return false;
+    if (!c || x.ready || c.dataset.activate != 'interaction' || !document.querySelector('[data-motion~=demo]') && !phone()) return false;
     x.ready = new Promise(function (r) { go = r; });
     x.startNow = now;
     return true;
@@ -222,7 +227,7 @@ document.addEventListener('click', function (e) {
     }, true);
   });
   function idle() { (self.requestIdleCallback || setTimeout)(start, { timeout: 3000 }); }
-  function ready() { if (take()) idle(); }
+  function ready() { if (!take()) return; if (phone() && document.readyState != 'complete') addEventListener('load', idle, { once: true }); else idle(); }
   if (document.readyState != 'loading') ready(); else document.addEventListener('DOMContentLoaded', ready, { once: true });
 })();
 /* The articles' YouTube and X frames are the browser's lazy frames: the built pages carry `loading="lazy"`

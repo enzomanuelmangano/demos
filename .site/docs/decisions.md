@@ -55,6 +55,8 @@ route sets no title from `og:site_name` (navigation.js), which turned the tab in
 
 ## D5. Legacy `/demos/<slug>` posts become 308s into the app (the 109 with a demo are pages again since D21)
 
+**Superseded by D25**: every post is a page; no `/demos/<slug>` redirects.
+
 108 of the 126 post slugs are demos of the app (`demos.contract`): `/demos/<slug>` → `/demos/demo/<slug>`.
 `3d-scroll-transition` → `scroll-transition-3d` (same demo, renamed in the port). The other 17 (animated-count-text,
 animated-grid-list, blurred-bottom-bar, dynamic-blur-tabs, dynamic-tab-indicator, email-demo, image-cropper,
@@ -197,6 +199,8 @@ heroes, all from 1024 px in `web/head.css` (one DOM, the stacked layout under 10
   still with no shift.
 
 ## D13. The Demos-tied content is not ported; its live URLs redirect permanently (owner, 2026-11-23)
+
+**Superseded by D25**: the four articles and the two series are ported; the redirects are gone.
 
 The owner: "All the content and articles tied to demos are no longer needed now" (classification:
 `docs/progress-content.md`). Four articles and the two series made only of them are not built, but their live URLs
@@ -596,6 +600,8 @@ screen (the launcher, edge to edge); a tap on an icon opens the demo, close retu
 
 ## D21. A demo post is /demos, whose phone opens that demo by itself (owner, 2026-11-24; amends D5)
 
+**Amended by D25**: the post is its article, not the /demos hero; the deep link (`goto`) stays, from 1024 px.
+
 The owner: "with the link demos/<slug> I'd like the same screen to open, and the phone to page automatically to the
 launcher page that has it and open the animation". So the 109 posts whose demo the app has are no longer 308s into
 `/demos/app/demo/<slug>`; each is a page of its own.
@@ -795,3 +801,50 @@ a click with no hover before it finds its chunk as before (holding them until in
 45 ms, review); a link about to be followed (pointer over, focus, touch or press) fetches its chunk at once if not yet.
 Exact's own pieces are left as Exact prepares them. The build fails if the entry stops appending its modulepreloads that
 way or a content module has no chunk of its own. Numbers: docs/perf.md "2026-11-24, preloads".
+
+## D25. The articles come back; "Read article" in the phone (owner, 2026-11-26; supersedes D13, amends D5 and D21)
+
+The owner: "I was wrong to say they were no longer needed and I do not want to lose the Google ranking ... a right click
+on a demo in the sim, Read article, takes me to the demo's code, the whole article under it and the animation I can
+interact with."
+
+**Content.** All 126 `/demos/<slug>` and the four skipped `/articles` pages are static prerendered pages with live's
+content; `/series/thoughts` and `/series/engineering` come back with them. The MDX under `.content/` stays the source
+(`tools/gen-content.ts`, at build): the demo posts' `Demo` (live's R2 video, QR code to `app.reactiive.io`, libraries,
+source), `ReanimatePromo`, `GitHubRepoButtons` and `SendFeedback` are `components/demo-post.contract`. The code shown
+is live's React Native code. `tools/parity/post-content.ts` checks every heading, paragraph, list item, code block,
+link, picture and video of live's `<main>` is in ours, without a script: 130 of 130.
+
+**Head.** Live's to the letter: the site's description, `/demos/og-image/<slug>`, the NewsArticle JSON-LD. D21's two
+differences are gone and head-diff rewrites nothing for them. Live's og image answers 404; ours answers with the
+`/demos` card (a rewrite, `tools/compose.ts`). The sitemap lists all 126 (live lists none: its `/demos` grid linked
+them, ours has no grid).
+
+**Where it differs from live.**
+- The links to `src/animations/<name>` ("View source", the GitHub cards) answer 404 on GitHub; ours point at
+  `.legacy/src/animations/` (renamed folders mapped; `inner-shared-transition` has none: the parent folder). Moving
+  `.legacy/` again must move these (`gen-content.ts` `legacySource`).
+- New: "Exact source on GitHub" (`demos/<app>/`) beside "View source"; "Try the live demo" under 1024 px.
+- "Ask for support" and "Send feedback" are mail links (live's modals led to the same address or needed the API).
+- The video does not open full screen on a click.
+- `/profile` and `/manage-subscription` signed out are a 200 page that sends to `/demos` in the page (live: 200 and a
+  client-side redirect), no longer a 307.
+
+**Layout.** The article is the article page's 768 px column. From 1024 px, a post whose demo the app has shows
+`/demos`'s kept frame (D17) fixed beside the column (`--ph` = the window less 136 px, 320-780 px): the same live app,
+no reload between `/demos` and posts, and the goto of D21 opens the demo in it. Under 1024 px (phones and tablets) no
+frame: "Try the live demo" under the title opens `/demos/app/demo/<app>`. The 17 posts without a demo are the article
+alone. `/demos` is unchanged.
+
+**Speed.** The post activates on interaction (D16); `web/reveal.js` starts the runtime, which frames the app, only on
+a post with a phone from 1024 px, after the page's load and when idle. The phone behind the frame is a vector
+(`components/phone-bezel.contract`), not `/demos`'s still, which became the page's largest paint; the video's box is
+its own shape, so it does not either. The posts' content chunks (`demo-<slug>`) are held back to their own pages (D24).
+
+**Read article.** Only the framed copy has it (isolation.md §6): the app's list of readable demos and the bridge are
+inlined by `tools/compose.ts`; the icons' menu gets the item by an exact-match patch of `modules/index.js`
+(`tools/demos-web/patches.ts`); a search result (right click, long press) and an open demo (right click only: a long
+press there belongs to the demo) get a menu drawn by the bridge with the same look. The app posts
+`{ demos: 'read', slug }` to the page's origin; `web/sim-goto.js` hears only a visible Demos frame and clicks a link, so
+the router navigates in place (one entry, the article's top, Back returns). A demo the reader opened is left open.
+Checked by `tools/parity/sim-read.ts`. All 109 demos of the app have a post today; one without would show no item.

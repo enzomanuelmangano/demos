@@ -3,6 +3,7 @@
 // web/reveal.js as a script of its own; checks that the copy there is current (`--check`, for CI). Run after editing web/head.css.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { NOT_IN_APP } from './demos-web/legacy-posts.ts';
 
 const site = join(import.meta.dir, '..');
 const preloads: string[] = [];
@@ -37,7 +38,8 @@ const hi = next.findIndex((h) => typeof h.script?.text === 'string' && h.script.
 if (hi >= 0) next[hi] = { script: { text: hint } };
 else next.splice(next.findIndex((h) => h.script?.text?.includes('IntersectionObserver')) + 1, 0, { script: { text: hint } });
 // web/sim-goto.js (a demo post's deep link, D21), its own script after sim-hint.js, comments dropped.
-const goto = readFileSync(join(site, 'web/sim-goto.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+const goto = readFileSync(join(site, 'web/sim-goto.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n')
+  .replace("'__NO_APP__'", () => `'${NOT_IN_APP.join(' ')}'`);
 const isGoto = (h: any) => typeof h.script?.text === 'string' && h.script.text.includes("demos: 'goto'");
 const gi = next.findIndex(isGoto);
 if (gi >= 0) next[gi] = { script: { text: goto } };

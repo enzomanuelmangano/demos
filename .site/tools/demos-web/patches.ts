@@ -132,6 +132,23 @@ export const PATCHES: Patch[] = [
        "    // Not the pointercancel this (or the pull) sends the icon under the press.\n    if (!drag || e.pointerId !== drag.id || !(e.isTrusted || e.exactLifted === true)) return;\n"],
     ],
   },
+  {
+    // "Read article" in the framed app's menus on reactiive.io (D25): the icons' long-press menu (and right click)
+    // gets the item first, for a demo that has an article, and picking it tells the page. The bridge
+    // (tools/demos-web/bridge.js `__siteArticle`) is the site's and exists only in the framed copy: unframed, or on a
+    // phone's full screen, it offers nothing and the menu is the app's own. Checked by tools/parity/sim-read.ts.
+    file: /^index\.js$/,
+    dir: 'modules',
+    why: 'the icon menu offers "Read article" when the site frames the app',
+    edits: [
+      ["const MENU_ICONS = {\n",
+       "const MENU_ICONS = {\n  article: '<path d=\"M10 5.2C8.4 4 6.2 3.6 3.2 3.8V15.4C6.2 15.2 8.4 15.6 10 16.8C11.6 15.6 13.8 15.2 16.8 15.4V3.8C13.8 3.6 11.6 4 10 5.2ZM10 5.2V16.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>',\n"],
+      ["  const act = (kind, slug, demo, layer) => {\n",
+       "  const act = (kind, slug, demo, layer) => {\n    if (kind === 'article') return void globalThis.__siteArticle?.read(slug);\n"],
+      ["    const rows = [...(demo.inspiration ? [['inspiration', 'Inspiration', 'sparkles']] : []), ",
+       "    const rows = [...(globalThis.__siteArticle?.has(slug) ? [['article', 'Read article', 'article']] : []), ...(demo.inspiration ? [['inspiration', 'Inspiration', 'sparkles']] : []), "],
+    ],
+  },
 ];
 
 /** Applies every patch to the artifact at `dir` (the copy under the composed output); returns what it changed. */

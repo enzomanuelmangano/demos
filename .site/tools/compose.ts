@@ -16,7 +16,6 @@ import { BASE, keyAt } from './demos-web/build.ts';
 import { ALIASES, DEMO_POSTS, LEGACY_DEMO_POSTS, NOT_IN_APP } from './demos-web/legacy-posts.ts';
 import { demosHead } from './demos-web/head.ts';
 import { patchDemos } from './demos-web/patches.ts';
-import { NOT_PORTED_REDIRECTS } from './seo/site.ts';
 
 type Route = { src?: string; dest?: string; status?: number; headers?: Record<string, string>; handle?: string; continue?: boolean };
 
@@ -39,10 +38,10 @@ const demosRoutes = readJson(join(demosDist, 'routes.json'));
 if ((siteRoutes.base ?? '/') !== '/') throw new Error('compose: the site builds at /');
 if (demosRoutes.base !== BASE) throw new Error(`compose: the demos build's base is ${demosRoutes.base}, not ${BASE}`);
 
-// /demos is the site's page, and so is each demo post (/demos/<slug>, D21: the same page, its phone opening the demo);
-// everything else under /demos/ is the Demos app's mount (/demos/app/), a redirect, or a 404.
+// /demos is the site's page, and so is each demo post (/demos/<slug>, D25: the article, the phone beside it);
+// everything else under /demos/ is the Demos app's mount (/demos/app/), a share image, a redirect, or a 404.
 const MOUNT = BASE.replace(/\/$/, '');
-const postSlugs = new Set(DEMO_POSTS.map((d) => d.slug));
+const postSlugs = new Set<string>(LEGACY_DEMO_POSTS);
 if (existsSync(join(siteDist, MOUNT.slice(1)))) throw new Error(`compose: the site build has ${MOUNT}/, the Demos app's mount`);
 if (existsSync(join(siteDist, 'demos'))) for (const n of readdirSync(join(siteDist, 'demos'))) if (n !== 'index.html' && !postSlugs.has(n)) throw new Error(`compose: the site build has /demos/${n}, which is not a demo post`);
 for (const s of postSlugs) if (!existsSync(join(siteDist, 'demos', s, 'index.html'))) throw new Error(`compose: the site build lacks the demo post /demos/${s}`);
@@ -72,7 +71,7 @@ for (const slug of NOT_IN_APP) if (appSlugs.has(slug) || ALIASES[slug]) throw ne
 // The page's driver (web/sim-goto.js) maps a post to its app slug by the same aliases.
 const goto = readFileSync(join(site, 'web/sim-goto.js'), 'utf8');
 for (const [from, to] of Object.entries(ALIASES)) if (!goto.includes(`'${from}': '${to}'`)) throw new Error(`compose: web/sim-goto.js lacks the alias '${from}': '${to}'`);
-const reserved = ['demo', 'open', 'atlas', 'snap', 'assets', 'modules', 'shaders'];
+const reserved = ['demo', 'open', 'atlas', 'snap', 'assets', 'modules', 'shaders', 'og-image'];
 for (const s of LEGACY_DEMO_POSTS) if (reserved.includes(s) || (s as string) === 'app') throw new Error(`compose: legacy post ${s} collides with a demos app path`);
 
 // ---------------------------------------------------------------- files
@@ -114,13 +113,18 @@ if (keyboard.includes('</script')) throw new Error('compose: the keyboard cannot
 // UIScrollView's deceleration and paging, no tap from a drag): the same kind of site code, inlined after the keyboard.
 const mouseScroll = readFileSync(join(site, 'tools/demos-web/mouse-scroll.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//, '').trim();
 if (mouseScroll.includes('</script')) throw new Error('compose: the mouse scroll cannot be inlined');
-const bridgeScript = `<script>${bridge}</script><script>${keyboard}</script><script>${mouseScroll}</script>`;
+// The app's demos that have an article: the framed app's menus offer "Read article" for these alone (D25).
+const articles = `window.__reactiiveArticles=${JSON.stringify(DEMO_POSTS.map((d) => d.app))};`;
+const bridgeScript = `<script>${articles}${bridge}</script><script>${keyboard}</script><script>${mouseScroll}</script>`;
 for (const page of ['index.html', 'shell.html']) {
   const p = join(staticDir, MOUNT.slice(1), page);
   const html = readFileSync(p, 'utf8');
   if (!html.includes('<title>Demos</title>')) throw new Error(`compose: demos ${page} has no <title>Demos</title>`);
   writeFileSync(p, html.replace('<title>Demos</title>', () => head + bridgeScript));
 }
+
+if (existsSync(join(staticDir, 'signed-out.html'))) throw new Error('compose: signed-out.html collides with the site build');
+writeFileSync(join(staticDir, 'signed-out.html'), '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta http-equiv="refresh" content="0;url=/demos"><title>Reactiive</title><body style="background:#0c0c0e"><a href="/demos">Demos</a>\n');
 
 // ---------------------------------------------------------------- routes
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -130,16 +134,13 @@ const immutable = { 'cache-control': 'public, max-age=31536000, immutable' };
 const routes: Route[] = [];
 // Redirects first (Next.js's: a trailing slash drops with 308; Exact's: the mount's root gains one).
 routes.push({ src: `^${esc(MOUNT)}$`, status: 308, headers: { Location: BASE } });
-// A legacy demo post whose demo the app has is a page again (D21: the site's /demos/<slug>, below); one it lacks is a
-// 307 to the launcher (not a permanent equivalent, D5).
-for (const slug of NOT_IN_APP) routes.push({ src: `^/demos/${esc(slug)}/?$`, status: 307, headers: { Location: '/demos' } });
-// Signed-out /profile and /manage-subscription sent a visitor to /demos (client-side, in the reference); at the edge now.
-// With the accounts' API behind /api/* (LEGACY_API_ORIGIN), /profile and /manage-subscription (a subscription's status
-// and its cancel only, docs/stubs.md) are the site's pages (components/account), which send a signed-out reader there.
-if (!process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/(?:profile|manage-subscription)/?$', status: 307, headers: { Location: '/demos' } });
-// The content not ported (Demos-tied articles and their two series, docs/decisions.md D13): permanent redirects.
-for (const [from, to] of Object.entries(NOT_PORTED_REDIRECTS)) routes.push({ src: `^${esc(from)}/?$`, status: 308, headers: { Location: to } });
 routes.push({ src: `^/((?!${esc(MOUNT.slice(1))}/).+)/$`, status: 308, headers: { Location: '/$1' } });
+// A demo post's share image keeps live's URL (its head names it; live's own answers 404): the /demos card (D25).
+routes.push({ src: `^/demos/og-image/(?:${LEGACY_DEMO_POSTS.map(esc).join('|')})$`, dest: '/og/demos.png' });
+// Signed out (no accounts' API), /profile and /manage-subscription are 200 as live's, and send the visitor to /demos
+// in the page, as live's did (D25). With the API behind /api/* (LEGACY_API_ORIGIN) they are the site's pages
+// (components/account), which send a signed-out reader there.
+if (!process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/(?:profile|manage-subscription)$', dest: '/signed-out.html' });
 // The articles' images keep their live URL (og:image, JSON-LD and external caches name it): /content-assets/… is the content pipeline's assets/content/….
 routes.push({ src: '^/content-assets/(.*)$', dest: '/assets/content/$1' });
 if (process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/api/(.*)$', dest: `${process.env.LEGACY_API_ORIGIN.replace(/\/$/, '')}/api/$1` });
