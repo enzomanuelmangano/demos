@@ -28,6 +28,7 @@
     "remark-parse": "11",
     "sharp": "0.34.4",
     "typescript": "5.9.3",
-    "unified": "11"
+    "unified": "11",
+    "wawoff2": "2.0.1"
   }
 }

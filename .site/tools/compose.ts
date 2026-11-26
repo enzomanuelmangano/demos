@@ -16,6 +16,7 @@ import { BASE, keyAt } from './demos-web/build.ts';
 import { ALIASES, DEMO_POSTS, LEGACY_DEMO_POSTS, NOT_IN_APP } from './demos-web/legacy-posts.ts';
 import { demosHead } from './demos-web/head.ts';
 import { patchDemos } from './demos-web/patches.ts';
+import { optimizeDemos } from './demos-web/optimize.ts';
 
 type Route = { src?: string; dest?: string; status?: number; headers?: Record<string, string>; handle?: string; continue?: boolean };
 
@@ -106,6 +107,8 @@ if (existsSync(join(demosDist, '.well-known'))) throw new Error('compose: the de
 // Exact web-host fixes the pinned Exact lacks (tools/demos-web/patches.ts, decisions.md D18).
 const patched = patchDemos(join(staticDir, MOUNT.slice(1)));
 for (const { file, why } of patched) console.log(`compose: patched ${file}: ${why}`);
+// Lighter assets (tools/demos-web/optimize.ts); the files it rewrote are revalidated like the patched ones.
+patched.push(...(await optimizeDemos(join(staticDir, MOUNT.slice(1)))));
 
 // The /demos/app/ head: /demos's title, description and share card (a CI-only overlay of the built HTML, never of the
 // tracked demos sources). The page is one shell for every demos route.
