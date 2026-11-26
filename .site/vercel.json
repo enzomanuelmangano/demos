@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "curl -fsSL https://bun.sh/install | bash -s bun-v1.4.2 && $HOME/.bun/bin/bun install --frozen-lockfile",
+  "buildCommand": "PATH=$HOME/.bun/bin:$PATH bun tools/vercel-build.ts",
+  "ignoreCommand": "git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- ':(top)' ':(top,exclude).legacy' ':(top,exclude).parity' ':(top,exclude).github' ':(top,exclude,glob)**/*.md'"
+}
