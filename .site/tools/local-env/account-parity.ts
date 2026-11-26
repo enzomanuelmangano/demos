@@ -3,7 +3,9 @@
 // storage-continuity.ts): for each user state (no plan, an active monthly plan, a cancelled annual one, a billing issue)
 // both sides are shot at 1440 and 390 (first viewport): /profile, /manage-subscription, the avatar's menu (1440), the
 // cancel confirmation; signed out: the sign-in dialog over /articles. Then each pair is diffed (threshold 32/255); it
-// exits 1 when a pair is over its budget (2 %; /manage-subscription 10 %: the price cards removed by design).
+// exits 1 when a pair is over its budget (2 %). The screens the rebuild changes on purpose (decisions.md D26: no new
+// subscriptions: /profile without a running plan, every /manage-subscription) are diffed for the record only; the new
+// side's texts are checked instead.
 //   bun tools/local-env/account-parity.ts [--origin http://localhost:4317] [--out /tmp/account-parity]
 // /api/user/info is answered in the browser (the reference's shape) for a made-up token; /api/purchase/* is never
 // forwarded. Nothing reaches production.
@@ -24,6 +26,21 @@ const PLANS: Record<string, unknown> = {
   cancelled: { id: 1, userId: 1, itemId: 'x', subscriptionType: 'annual', status: 'cancelled', expiresAt: '2027-03-02T12:00:00.000Z' },
   pastdue: { id: 1, userId: 1, itemId: 'x', subscriptionType: 'monthly', status: 'past_due', expiresAt: '2027-01-15T12:00:00.000Z' },
 };
+// What the new side says on the screens that differ on purpose: [must, mustNot], on the page's text.
+const expected = (screen: 'profile' | 'manage', state: string): [string[], string[]] => {
+  if (screen === 'profile') return state === 'none' ? [['Support Demos', 'Sponsor on GitHub'], ['No Active Plan', 'Manage Subscription']]
+    : [['Manage Subscription'], ['Sponsor on GitHub', 'No Active Plan']];
+  if (state === 'none') return [['Profile Settings', 'Sponsor on GitHub'], ['Your subscription']];
+  return [['Your subscription', ...(state === 'cancelled' ? ['keep supporting Demos on GitHub Sponsors'] : ['Cancel Plan'])],
+    ['All 100+', 'Plan Benefits', 'Review Billing', 'refund']];
+};
+const wrong: string[] = [];
+async function says(page: Page, screen: 'profile' | 'manage', state: string, width: number) {
+  const [must, mustNot] = expected(screen, state);
+  const text = await page.eval<string>('document.body.innerText');
+  const bad = [...must.filter((t) => !text.includes(t)).map((t) => `lacks "${t}"`), ...mustNot.filter((t) => text.includes(t)).map((t) => `has "${t}"`)];
+  if (bad.length) wrong.push(`${screen}-${state}@${width}: ${bad.join(', ')}`);
+}
 const side = async (to: string) => { await fetch(`${ORIGIN}/__switch?to=${to}`, { method: 'POST' }); };
 
 const { cdp, kill } = await launch({ port: 9481 });
@@ -73,15 +90,23 @@ for (const s of ['old', 'new']) {
       await until(page, `document.body.innerText.includes('Profile Settings')`);
       await Bun.sleep(1800);
       await shot(page, `${s}.profile-${state}@${width}`); shots.push(`profile-${state}@${width}`);
+      if (s === 'new') await says(page, 'profile', state, width);
       await page.goto(`${ORIGIN}/manage-subscription`);
-      await until(page, `document.body.innerText.includes('View and manage your support options')`);
+      // The new site: a subscriber's page, or /profile for a reader without a plan.
+      await until(page, s === 'old' ? `document.body.innerText.includes('View and manage your support options')`
+        : state === 'none' ? `location.pathname === '/profile' && document.body.innerText.includes('Sponsor on GitHub')`
+        : `document.body.innerText.includes('Your subscription')`);
       await Bun.sleep(1800);
       await shot(page, `${s}.manage-${state}@${width}`); shots.push(`manage-${state}@${width}`);
+      if (s === 'new') await says(page, 'manage', state, width);
       if (state === 'active') {
         await at(page, byText('button', 'Cancel Plan'), 'click');
         await until(page, `document.body.innerText.includes('Cancel subscription?')`);
         await Bun.sleep(900);
-        await shot(page, `${s}.cancel-dialog@${width}`); shots.push(`cancel-dialog@${width}`);
+        // The dialog's own box: the page behind it differs on purpose.
+        const d = await page.eval<{ x: number; y: number; width: number; height: number }>(`(() => { const h = [...document.querySelectorAll('body *')].filter(e => e.textContent.trim() === 'Cancel subscription?' && e.getClientRects().length).pop(); const r = (h.closest('dialog,[role=dialog],[data-vaul-drawer]') || document.documentElement).getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(Math.min(r.height, innerHeight - r.y)) }; })()`);
+        const cut = await page.send('Page.captureScreenshot', { format: 'png', clip: { ...d, scale: 1 } });
+        writeFileSync(join(OUT, `${s}.cancel-dialog@${width}.png`), Buffer.from(cut.data, 'base64')); shots.push(`cancel-dialog@${width}`);
       }
       if (state === 'active' && width === 1440) {
         await page.goto(`${ORIGIN}/demos`);
@@ -118,9 +143,10 @@ for (const s of ['old', 'new']) {
 await side('old');
 const page = await open(1440, null);
 const results: Record<string, number> = {};
-// The most a pair may differ (% of pixels over 32/255, first viewport). /manage-subscription lacks the reference's price
-// cards by the owner's decision (docs/stubs.md): its budget covers their area; everything else is the same screen.
-const budget = (n: string) => n.startsWith('manage-') ? 10 : 2;
+// The most a pair may differ (% of pixels over 32/255, first viewport), and the screens that differ by the owner's
+// decision (D26), checked by their text above.
+const BUDGET = 2;
+const onPurpose = (n: string) => /^(manage-|profile-(none|pastdue)@)/.test(n);
 const over: string[] = [];
 // Every screen, on both sides: 4 user states x (/profile, /manage-subscription) + the cancel dialog + the sign-in dialog
 // at each width, + the menu at 1440. A shot missing on a side (a flow that broke before it) is a failure, not a pass.
@@ -132,11 +158,12 @@ if (missing) console.log(`FAIL  ${counts.size} screens shot (expected ${EXPECTED
 for (const n of [...new Set(shots)]) {
   const r = await diffImages(page, join(OUT, `old.${n}.png`), join(OUT, `new.${n}.png`), { diffOut: join(OUT, `diff.${n}.png`) }).catch(() => null);
   results[n] = r ? Math.round(r.ratio * 10000) / 100 : -1;
-  const ok = results[n] >= 0 && results[n] <= budget(n);
+  const ok = results[n] >= 0 && (onPurpose(n) || results[n] <= BUDGET);
   if (!ok) over.push(n);
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${n.padEnd(28)} ${results[n]} % px differ (budget ${budget(n)} %)`);
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${n.padEnd(28)} ${results[n]} % px differ (${onPurpose(n) ? 'changed on purpose' : `budget ${BUDGET} %`})`);
 }
 writeFileSync(join(OUT, 'results.json'), JSON.stringify(results, null, 1));
 kill();
-console.log(over.length ? `${over.length} over budget: ${over.join(', ')}` : missing ? 'screens missing' : `all ${counts.size} within budget`);
-process.exit(over.length || missing ? 1 : 0);
+for (const w of wrong) console.log(`FAIL  new ${w}`);
+console.log(over.length ? `${over.length} over budget: ${over.join(', ')}` : missing ? 'screens missing' : wrong.length ? `${wrong.length} new screens say the wrong thing` : `all ${counts.size} as expected`);
+process.exit(over.length || missing || wrong.length ? 1 : 0);

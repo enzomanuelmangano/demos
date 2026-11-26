@@ -16,7 +16,7 @@ export const API = `${WEBSITE_URL}/api`;
 const ON = ACCOUNTS === '1';
 
 type Me = Result<'userInfo'>;
-const SIGNED_OUT: Me = { signedIn: false, rejected: false, id: '', name: '', email: '', picture: '', relay: false, supporter: false, plan: '', planType: '', planStatus: '', expires: '' };
+const SIGNED_OUT: Me = { signedIn: false, rejected: false, id: '', name: '', email: '', picture: '', relay: false, hasPlan: false, planType: '', planStatus: '', expires: '' };
 
 // date-fns `format(new Date(expiresAt), 'MMMM d, yyyy')` (the reader's time zone), as the reference's SubscriptionBox
 // and cancel dialog write it; '' when there is no date.
@@ -81,9 +81,8 @@ export const accountSources = {
       email,
       picture: str(u.profilePicture),
       relay: email.includes('privaterelay.appleid.com'),
-      supporter,
-      // states/auth/user.ts: planData is the plan when there is one; currentPlan its subscriptionType for a supporter.
-      plan: supporter ? planType : '',
+      hasPlan: !!body.plan,
+      // states/auth/user.ts: planData is the plan when there is one.
       planType: body.plan ? planType : '',
       planStatus: body.plan ? status : '',
       expires: body.plan ? longDate(body.plan.expiresAt) : '',

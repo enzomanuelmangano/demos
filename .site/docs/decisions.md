@@ -848,3 +848,21 @@ press there belongs to the demo) get a menu drawn by the bridge with the same lo
 `{ demos: 'read', slug }` to the page's origin; `web/sim-goto.js` hears only a visible Demos frame and clicks a link, so
 the router navigates in place (one entry, the article's top, Back returns). A demo the reader opened is left open.
 Checked by `tools/parity/sim-read.ts`. All 109 demos of the app have a post today; one without would show no item.
+
+## D26. No new subscriptions: sponsor on GitHub; a subscriber can only see the plan and cancel it (owner, 2026-11-26)
+
+Supersedes the subscription parts of D15 and of the owner's 2026-11-23 "status and cancel only".
+
+- **Without a plan** (no `plan` in `/api/user/info`): `/profile` shows "Support Demos" with "Sponsor on GitHub"
+  (github.com/sponsors/enzomanuelmangano, /demos's Sponsor heart) where the SubscriptionBox's no-plan face was; the
+  avatar menu's "Support Demos" is "Sponsor on GitHub", the same external link; `/manage-subscription` redirects to
+  `/profile`. The sponsor box waits while the user's info is being asked, so a subscriber never sees it. (Phones have no
+  avatar menu: the box on `/profile` is their way to it.)
+- **With a plan, any status**: the SubscriptionBox (a plan neither active nor cancelled keeps its name and says its
+  payment failed or that it is no longer active, with no date), "Manage Support", and `/manage-subscription` as "Your
+  subscription": the plan's card, "Cancel Plan" while active and while the payment fails (the warning says to cancel
+  below). Removed there: the "All 100+ animations" paragraph, "Review Billing Details" (checkout.reactiive.io), the
+  refund sentence of the cancelled banner (now a GitHub Sponsors link) and Plan Benefits (it advertised access that
+  is bought).
+- The only purchase endpoint any code calls stays `cancel-subscription`. Signed out: unchanged.
+- `tools/local-env/account-parity.ts`: these screens differ from live on purpose and are checked by their text.
