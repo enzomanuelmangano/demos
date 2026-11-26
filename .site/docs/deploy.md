@@ -53,7 +53,7 @@ uploads that tree with `vercel deploy --prebuilt`. Vercel builds nothing.
 |---|---|
 | Workflow | `.github/workflows/site-deploy.yml` |
 | Demos artifact key / cache | `.site/tools/demos-web/build.ts` (`--key-only`) |
-| Compose (output tree, redirects, `/api/*`, `/content-assets/*` rewrite) | `.site/tools/compose.ts` |
+| Compose (output tree, redirects, `/api/*`, live's `/content-assets/` images) | `.site/tools/compose.ts` |
 | Head, JSON-LD, sitemap, robots, RSS, manifest | `.site/tools/seo/` (`metadata.ts` is the one table of page kinds) |
 | Parity of those with the live site | `bun .site/tools/parity/head-diff.ts` |
 
@@ -63,10 +63,9 @@ uploads that tree with `vercel deploy --prebuilt`. Vercel builds nothing.
   subtitle, date, tags, series, featuredImage). A built page with no entry, or a head title that differs from the
   `head title=...` in the Contract, fails `postbuild.ts`: new routes must say what they are.
 - The home title is plain `Home`; every other page `<title> | Reactiive`; the 404 page is `noindex` (two robots tags, as live).
-- Article share images keep the live URL `/content-assets/articles/<slug>/images/header.webp`; compose rewrites it to
-  `/assets/content/...`.
-- The four articles that present Demos (`NOT_PORTED` in `tools/seo/site.ts`, the content pipeline's SKIPPED set) are not in the
-  sitemap or the feed here; live lists them. Everything else is byte-identical to live (checked by head-diff).
+- Article images keep live's URLs `/content-assets/<kind>/<slug>/images/<file>` (share images, JSON-LD, image search):
+  compose places the originals there; the pages load the optimised copies under `/assets/content/`.
+- Every article and demo post is built and listed in the sitemap (D25). The head is byte-identical to live (checked by head-diff).
 - `/_dev/*` and the Demos app's paths are never listed; `/demos` is the only demos URL in the sitemap.
 - Known accepted head difference: Next's `next-size-adjust` marker.
 - Deliberate head differences (D23): /demos's and /demos-app's descriptions (and og/twitter, og:image:alt) are their

@@ -10,7 +10,7 @@
 // https://reactiive.io) is the canonical origin written into the /demos/ head; links stay relative, so a preview links
 // to itself. LEGACY_API_ORIGIN, when set, proxies /api/* to the old Next deployment (stub: unset, see docs/stubs.md).
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { BASE, keyAt } from './demos-web/build.ts';
 import { ALIASES, DEMO_POSTS, LEGACY_DEMO_POSTS, NOT_IN_APP } from './demos-web/legacy-posts.ts';
@@ -90,6 +90,15 @@ if (existsSync(pub)) for (const n of readdirSync(pub)) {
   if (existsSync(join(staticDir, n))) throw new Error(`compose: public/${n} collides with the site build's ${n}`);
   cpSync(join(pub, n), join(staticDir, n), { recursive: true });
 }
+// The articles' images at live's URLs (og:image, JSON-LD, image search and external caches name them): live serves every
+// file of a page's images/ at /content-assets/<kind>/<slug>/images/…, so the originals are placed there. The pages load
+// the content pipeline's optimised variants (/assets/content/…).
+const content = join(site, '.content');
+if (existsSync(join(staticDir, 'content-assets'))) throw new Error("compose: the site build already has a content-assets/, which collides with live's image URLs");
+for (const kind of ['articles', 'docs', 'demos']) for (const slug of readdirSync(join(content, kind))) {
+  const images = join(content, kind, slug, 'images');
+  if (existsSync(images)) cpSync(images, join(staticDir, 'content-assets', kind, slug, 'images'), { recursive: true, filter: (p) => !basename(p).startsWith('.') });
+}
 // The demos' robots.txt names only its mount; the origin's robots.txt is the site's (Exact: serve discovery files at
 // the root and merge them; the site's `Allow: /` already covers /demos/). The demos build has no .well-known/.
 copy(demosDist, join(staticDir, MOUNT.slice(1)), ['robots.txt']);
@@ -141,8 +150,6 @@ routes.push({ src: `^/demos/og-image/(?:${LEGACY_DEMO_POSTS.map(esc).join('|')})
 // in the page, as live's did (D25). With the API behind /api/* (LEGACY_API_ORIGIN) they are the site's pages
 // (components/account), which send a signed-out reader there.
 if (!process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/(?:profile|manage-subscription)$', dest: '/signed-out.html' });
-// The articles' images keep their live URL (og:image, JSON-LD and external caches name it): /content-assets/… is the content pipeline's assets/content/….
-routes.push({ src: '^/content-assets/(.*)$', dest: '/assets/content/$1' });
 if (process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/api/(.*)$', dest: `${process.env.LEGACY_API_ORIGIN.replace(/\/$/, '')}/api/$1` });
 // /demos frames the app sandboxed (no allow-same-origin: an opaque origin, so Chrome runs it in a renderer process of
 // its own, off the page's main thread; decisions.md D12): its scripts, wasm and fonts are then CORS fetches. Public,
