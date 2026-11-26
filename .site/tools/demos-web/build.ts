@@ -112,7 +112,9 @@ if (import.meta.main) {
     const chromeLog = join(scratch, 'chrome.log');
     if (process.platform === 'linux' && !process.env.CHROME) {
       const pick = `import { chromium } from ${JSON.stringify(join(exact, 'scripts/agent-launch.mjs'))}; const c = chromium(); console.log(c.unavailable ? '' : c.executable);`;
-      const real = spawnSync('bun', ['-e', pick], { encoding: 'utf8' }).stdout.trim().split('\n').pop() ?? '';
+      const picked = spawnSync('bun', ['-e', pick], { encoding: 'utf8' });
+      const real = picked.stdout.trim().split('\n').pop() ?? '';
+      if (!real) console.warn(`demos-web: no Chrome picked for the factory roster (${picked.status}): ${picked.stderr.trim().slice(0, 400)}`);
       if (real) {
         const wrapper = join(scratch, 'chrome-no-sandbox');
         writeFileSync(wrapper, `#!/bin/sh\nexec ${JSON.stringify(real)} --no-sandbox --disable-dev-shm-usage --disable-gpu "$@" 2>>${JSON.stringify(chromeLog)}\n`, { mode: 0o755 });
