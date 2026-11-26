@@ -123,16 +123,19 @@ component TestFlightLink
   view
     view position="relative" data-motion="d-tf"
       link href=testFlightUrl() target="_blank" rel="noopener noreferrer" aria-label="Try the Demos app on iPhone with TestFlight"
-        display="flex" align-items="center" gap=6 height=24 font-size=13 line-height="20px" color="rgb(255 255 255 / 0.5)"
+        // Optically on the pill above: the phone in a 16 px box centred where the GitHub mark is (the pill's 10 px
+        // padding), and the words starting where "Demos is Open Source" does (the mark's 16 px and a 10 px gap). Only
+        // where the pill and the link are left-aligned (under 640 px and from 1024 px, `centring`); centred, no inset.
+        display="flex" align-items="center" gap=10 height=24 padding-left=`max(${sm(10, 0)}, ${lg(0, 10)})` font-size=13 line-height="20px" color="rgb(255 255 255 / 0.5)"
         white-space="nowrap" transition="color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
         :hover
           color = "rgb(255 255 255 / 0.8)"
-        svg width=14 height=14 viewBox="0 0 14 14" fill="none" aria-hidden=true flex-shrink=0
-          rect x=3.25 y=0.75 width=7.5 height=12.5 rx=2 stroke="currentColor" stroke-width=1.3
-          rect x=5.5 y=2.3 width=3 height=1 rx=0.5 fill="currentColor"
+        svg width=16 height=16 viewBox="0 0 16 16" fill="none" aria-hidden=true flex-shrink=0
+          rect x=4 y=1.15 width=8 height=13.7 rx=2.1 stroke="currentColor" stroke-width=1.3
+          rect x=6.5 y=2.8 width=3 height=1 rx=0.5 fill="currentColor"
         text "Try it on iPhone"
         // The north-east arrow drawn, not typed: U+2197 is outside the preloaded ASCII face and would fetch the full Inter.
-        svg width=9 height=9 viewBox="0 0 9 9" fill="none" aria-hidden=true flex-shrink=0 opacity=0.7
+        svg width=9 height=9 viewBox="0 0 9 9" fill="none" aria-hidden=true flex-shrink=0 opacity=0.7 margin-left=-4
           path d="M2 7 7 2M3 2h4v4" stroke="currentColor" stroke-width=1.2 stroke-linecap="round" stroke-linejoin="round"
       view position="absolute" left=-12 top="100%" margin-top=10 padding=12 border-radius=16 background-color="#16171b"
         pointer-events="none" aria-hidden=true data-motion="d-tf-qr"
@@ -166,6 +169,8 @@ component DemosPage
               // Not pressable (owner, 2026-11-24): no handler, cursor or hover. The gradient paints only inside the box, and
               // the -0.04em tracking ends the box before the s's ink (1-2 px cut at 1024-1440 px): 0.1em of padding on the
               // right, given back by the margin, lets the ink in without moving anything.
+              // The D's left bearing (0.067em, 2.7 px at 40 px) set it in from the column: pulled back by it under 640 px
+              // (web/head.css d-title; from 1024 px the same rule's -.05em). Contract lengths take no em in calc().
               text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title"
                 font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em" padding-right="0.1em" margin-right="-0.1em"
                 margin-top=steps(8, 32, 56, 56) margin-bottom=steps(14, 24, 28, 28)
@@ -208,15 +213,14 @@ component DemosPage
 component DemosLaunch
   view
     column width="100%" align-items="center" margin-top=36 data-motion="d-launch blur-in" data-delay="650"
-      link href="/demos/app/" display="flex" align-items="center" justify-content="center" gap=10 height=52 padding-left=28
-        padding-right=24 border-radius=9999 background-color="#f5f5f7" color="#0b0b0d" font-size=17 font-weight=600
+      // Under 640 px the hero is left-aligned: the button spans the column, its edges on the text's (owner, 2026-11-26,
+      // "not aligned" when it sat centred under left-aligned text); 640-768 px, centred like the hero.
+      link href="/demos/app/" display="flex" align-items="center" justify-content="center" height=52 padding-left=28
+        min-width=`min(100%, ${sm(9999, 0)})` box-sizing="border-box"
+        padding-right=28 border-radius=9999 background-color="#f5f5f7" color="#0b0b0d" font-size=17 font-weight=600
         letter-spacing="-0.01em" white-space="nowrap" data-motion="button d-launch-button" testId="open-demos"
+        // Words only (owner, 2026-11-26: the four-squares glyph after them read as a placeholder).
         text "Open the demos"
-        svg width=18 height=18 viewBox="0 0 18 18" fill="none" aria-hidden=true
-          rect x=1.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
-          rect x=10.5 y=1.5 width=6 height=6 rx=1.8 fill="currentColor"
-          rect x=1.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor"
-          rect x=10.5 y=10.5 width=6 height=6 rx=1.8 fill="currentColor" opacity=0.45
       link href="/demos/app/" aria-label="Open the demos app" display="block" margin-top=28 width="min(78vw, 320px)"
         data-motion="d-launch-still button" testId="open-demos-still"
         view width="100%" padding-top="200%" aria-hidden=true
