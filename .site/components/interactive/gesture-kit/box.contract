@@ -49,9 +49,9 @@ component BoxButton
 // half (`translate` under `overflow="hidden"`: the top and bottom halves make the bar between y = r and size - r,
 // the turned ones the bar between x = r and size - r) and a disc of radius r in its corner (`scale` r/rmax,
 // `translate` to (r, r)), all opaque in a group whose `opacity` is the colour's alpha.
-// The radius moves either by a transition (`radius` changes, `timing` the transition's timing after its property,
-// "none" for none) or by an endless keyframes pair `<prefix>Bar` / `<prefix>Disc` (`loop` the rest of the
-// shorthand, "none" for none).
+// The radius moves either by a transition (`radius` changes; `barMove` the bar's whole transition, `discMove` the
+// disc's, "none" for none) or by an endless keyframes pair (`bar` / `disc`, whole `animation` values, "none" for
+// none). The caller writes them whole: Exact checks every value an attribute can take, dead branches included.
 component MorphSquare
   props
     size: number
@@ -59,14 +59,15 @@ component MorphSquare
     alpha: number
     radius: number
     rmax: number
-    timing: string
-    prefix: string
-    loop: string
+    barMove: string
+    discMove: string
+    bar: string
+    disc: string
   view
     view position="relative" width=size height=size opacity=alpha flex-shrink=0
       for turn in [0, 90, 180, 270] key=turn
-        MorphQuarter(size=size, color=color, radius=radius, rmax=rmax, turn=turn, timing=timing,
-          bar=(loop == "none" ? "none" : `${prefix}Bar ${loop}`), disc=(loop == "none" ? "none" : `${prefix}Disc ${loop}`))
+        MorphQuarter(size=size, color=color, radius=radius, rmax=rmax, turn=turn, barMove=barMove, discMove=discMove,
+          bar=bar, disc=disc)
 
 component MorphQuarter
   props
@@ -75,14 +76,15 @@ component MorphQuarter
     radius: number
     rmax: number
     turn: number
-    timing: string
+    barMove: string
+    discMove: string
     bar: string
     disc: string
   view
     view position="absolute" left=0 top=0 width=size height=size rotate=`${turn}deg`
       view position="absolute" left=0 top=0 width=size height=(size / 2) overflow="hidden"
         view width=size height=(size / 2) background-color=color translate=`0px ${radius}px` animation=bar
-          transition=(timing == "none" ? "none" : `translate ${timing}`)
+          transition=barMove
       view position="absolute" left=0 top=0 width=(rmax * 2) height=(rmax * 2) border-radius="50%" background-color=color
         scale=(radius / rmax) translate=`${radius - rmax}px ${radius - rmax}px` animation=disc
-        transition=(timing == "none" ? "none" : `translate ${timing}, scale ${timing}`)
+        transition=discMove

@@ -1,0 +1,13 @@
+diff --git a/host/apple/Sources/ExactKit/Surface.swift b/host/apple/Sources/ExactKit/Surface.swift
+index abf90f479..43c1a7bae 100644
+--- a/host/apple/Sources/ExactKit/Surface.swift
++++ b/host/apple/Sources/ExactKit/Surface.swift
+@@ -153,7 +153,7 @@ extension NodeView {
+         let styles = sides.map { style["border_style_" + $0]?.string ?? "solid" }
+         let top = color("border_color_top", .clear)
+         let colors = sides.map { color("border_color_" + $0, top).cgColor }
+-        let sizes = BorderPaint.radii(style, in: box)
++        let sizes = BorderPaint.reduced(BorderPaint.radii(style, in: box), in: box)
+         let radii = sizes.map { $0.width }
+         let authored = channels("background_color").map { CGColor(srgbRed: $0[0] / 255, green: $0[1] / 255, blue: $0[2] / 255, alpha: $0[3] / 255) }
+         #if os(macOS)

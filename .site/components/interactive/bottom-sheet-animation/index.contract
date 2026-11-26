@@ -145,8 +145,8 @@ component Sheet
             view position="absolute" inset=0 background-color="rgba(255, 255, 255, 0.05)" opacity=(active ? 1 : 0)
               transition="opacity 200ms linear"
       view testId="sheet" position="absolute" pointerdown=sheetDown pointerup=sheetUp left="50%" top="50%" margin-left=(w > 0 ? `${0 - sheetWidth(w) / 2}px` : "calc(min(60vw, 350px) / -2)")
-        margin-top=-200 width=(w > 0 ? `${sheetWidth(w)}px` : "min(60vw, 350px)") height=400 z-index=100
-        translate=(w > 0 or at == "free" ? `0px ${shownY}px` : `0px ${sheetBottomCss()}`)
+        margin-top=(w > 0 or at == "free" ? -200 : `calc(${sheetBottomCss()} - 200px)`) width=(w > 0 ? `${sheetWidth(w)}px` : "min(60vw, 350px)") height=400 z-index=100
+        translate=(w > 0 or at == "free" ? `0px ${shownY}px` : "0px 0px")
         transition=(dragging or held or not springing ? "none" : `translate ${spring}`) -exact-translate-velocity="0 0"
         pan=drag panrelease=release
         touch-action=(kind == "basic" ? "auto" : "none") user-select="none" cursor="grab"

@@ -1,5 +1,5 @@
 <!-- exact:begin (exact new writes this block; bun exact.mjs update rewrites it) -->
-# Reactiive (reactiive.io): an Exact app
+# reactiive-site: an Exact app
 
 Run `bun exact.mjs --help` first to create `.exact/checkout`; set `EXACT=<checkout>` if needed.
 

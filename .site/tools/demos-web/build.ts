@@ -103,7 +103,19 @@ if (import.meta.main) {
     writeFileSync(join(scratch, 'app.json'), JSON.stringify(manifest, null, 2) + '\n');
     run('bun', ['exact.mjs', '--help'], {}); // makes .exact/checkout, which package.json's file: dependency reads
     run('bun', ['install', '--frozen-lockfile']);
-    run('bun', ['exact.mjs', 'web-build', '--out', 'dist', '--render', 'js'], { CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR ?? join(scratch, 'target') });
+    // On Linux the web build reads the native modules' factory roster in Chrome (Exact d885904c host/web-js/module.mjs,
+    // Bun.WebView with Playwright's build). A CI runner (Ubuntu's AppArmor refuses Chrome's sandbox) and Vercel's
+    // build (root) both need it unsandboxed: a wrapper, as Exact's CHROME, adds --no-sandbox. macOS uses WebKit.
+    const chrome: Record<string, string> = {};
+    if (process.platform === 'linux' && !process.env.CHROME) {
+      const real = spawnSync('bun', ['-e', `console.log(require(${JSON.stringify(join(exact, 'node_modules/playwright-core'))}).chromium.executablePath())`], { encoding: 'utf8' }).stdout.trim();
+      if (real) {
+        const wrapper = join(scratch, 'chrome-no-sandbox');
+        writeFileSync(wrapper, `#!/bin/sh\nexec ${JSON.stringify(real)} --no-sandbox --disable-dev-shm-usage "$@"\n`, { mode: 0o755 });
+        chrome.CHROME = wrapper;
+      }
+    }
+    run('bun', ['exact.mjs', 'web-build', '--out', 'dist', '--render', 'js'], { CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR ?? join(scratch, 'target'), ...chrome });
     const dist = join(scratch, 'dist');
     const routes = JSON.parse(readFileSync(join(dist, 'routes.json'), 'utf8'));
     if (routes.base !== BASE) throw new Error(`routes.json base ${routes.base}, expected ${BASE}`);
