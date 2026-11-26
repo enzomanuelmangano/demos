@@ -47,7 +47,7 @@ async function session(page: Page) {
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try { sessionStorage.setItem('reactiive.demos.hint', '1') } catch {}
     window.__arrive = { fcp: 0, still: 0, live: 0 };
     new PerformanceObserver((l) => { for (const e of l.getEntries()) if (e.name === 'first-contentful-paint') window.__arrive.fcp = e.startTime; }).observe({ type: 'paint', buffered: true });
-    new MutationObserver(() => { const a = window.__arrive; if (!a.live && document.querySelector('iframe[data-motion~=live]')) a.live = performance.now(); }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-motion'] });` });
+    new MutationObserver(() => { const a = window.__arrive; if (!a.live && document.querySelector('iframe[data-motion~=live], iframe[data-ready]')) a.live = performance.now(); }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-motion'] });` });
 }
 
 async function appTarget(page: Page) {
@@ -67,7 +67,7 @@ async function tapAt(page: Page, x: number, y: number) {
 }
 // A tap on the app's `testId`, through the page (the frame's offset added) or on the app at the top.
 async function tapApp(page: Page, app: Page, testId: string) {
-  const off = app === page ? { x: 0, y: 0 } : await page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+  const off = app === page ? { x: 0, y: 0 } : await page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live], iframe[data-ready]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
   const r = await app.eval<any>(`(() => { const e = document.querySelector('[data-testid="${testId}"]'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   if (!r) return false;
   await tapAt(page, r.x + off.x, r.y + off.y);
@@ -101,7 +101,7 @@ async function run() {
         await tapAt(page, l.x, l.y);
       } else await page.send('Page.navigate', { url: `${origin}/demos` });
       const still = await until(() => page.eval(`(() => { const e = document.querySelector('[data-motion~=sim-keep] [data-motion~=sim-still]'); if (!e || !e.checkVisibility()) return false; const u = getComputedStyle(e).backgroundImage; if (!u.includes('url')) return false; const src = u.slice(5, -2); const i = performance.getEntriesByName(new URL(src, location.href).href)[0]; return !!i && i.responseEnd > 0; })()`));
-      const live = await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')`), 60000);
+      const live = await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')`), 60000);
       const app = await appTarget(page);
       const tapMs = app ? (await until(() => app.eval(`!!document.querySelector('[data-testid=icon-composable-text]')`), 30000), await openClose(page, app, 'composable-text')) : NaN;
       const a = await page.eval<any>('window.__arrive');

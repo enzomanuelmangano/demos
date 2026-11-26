@@ -117,7 +117,7 @@ async function safariDriver(): Promise<Driver> {
     goto: (path) => call('POST', '/url', { url: origin + path }),
     eval: (body) => exec(body),
     async evalFrame(body) {
-      const el = await call('POST', '/element', { using: 'css selector', value: 'iframe[data-motion~=live]' });
+      const el = await call('POST', '/element', { using: 'css selector', value: 'iframe[data-motion~=live], iframe[data-ready]' });
       await call('POST', '/frame', { id: el });
       try { return await exec(body); } finally { await call('POST', '/frame/parent', {}); }
     },
@@ -151,7 +151,7 @@ console.log(`driver: ${drv.name}, origin ${origin}`);
 
 // ---------------------------------------------------------------- helpers
 const rectOf = (sel: string) => `const e = [...document.querySelectorAll(${JSON.stringify(sel)})].find((e) => e.getBoundingClientRect().width > 0); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };`;
-const frameBox = () => drv.eval<{ x: number; y: number } | null>(`const f = document.querySelector('iframe[data-motion~=live]'); if (!f) return null; const r = f.getBoundingClientRect(); return { x: r.x, y: r.y };`);
+const frameBox = () => drv.eval<{ x: number; y: number } | null>(`const f = document.querySelector('iframe[data-motion~=live], iframe[data-ready]'); if (!f) return null; const r = f.getBoundingClientRect(); return { x: r.x, y: r.y };`);
 const live = () => until(async () => !!(await frameBox()) && await drv.evalFrame<boolean>(`return document.querySelector('[data-testid="pager-track"]')?.style.willChange === 'transform'`), 30000);
 const demoOpen = () => drv.evalFrame<boolean>(`return !!document.querySelector('[data-testid="close"]')`).catch(() => false);
 async function clickInFrame(sel: string) {

@@ -55,7 +55,7 @@ const path = (page: Page) => page.eval<string>('location.pathname');
 const hist = async (page: Page) => { const h = await page.send('Page.getNavigationHistory'); return { index: h.currentIndex, paths: h.entries.map((e: any) => new URL(e.url).pathname) as string[], entries: h.entries }; };
 const back = async (page: Page) => { const h = await hist(page); await page.send('Page.navigateToHistoryEntry', { entryId: h.entries[h.index - 1].id }); };
 const forward = async (page: Page) => { const h = await hist(page); await page.send('Page.navigateToHistoryEntry', { entryId: h.entries[h.index + 1].id }); };
-const live = (page: Page) => until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')?.checkVisibility()`), 45000);
+const live = (page: Page) => until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')?.checkVisibility()`), 45000);
 const launcher = () => until(async () => (await appPath()).replace(/\/$/, '') === '/demos/app', 8000);
 const click = async (page: Page, x: number, y: number) => { await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y }); for (const type of ['mousePressed', 'mouseReleased']) { await page.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 }); await Bun.sleep(60); } };
 const shot = async (page: Page, name: string) => { const s = await page.send('Page.captureScreenshot', { format: 'png' }); const f = join(out, `${name}.png`); writeFileSync(f, Buffer.from(s.data, 'base64')); return f; };
@@ -67,7 +67,7 @@ const hasHints = (page: Page) => page.eval<boolean>(`[...document.body.children]
 const SAMPLER = `(() => { if (window.__fs) return; const s = window.__fs = { t: [], on: false }; const step = (t) => { if (s.on) s.t.push(t); requestAnimationFrame(step); }; requestAnimationFrame(step); })()`;
 const dropped = (t: number[], vsync: number) => t.slice(1).reduce((n, v, i) => n + Math.max(0, Math.round((v - t[i]) / vsync) - 1), 0);
 const appPage = (a: App, slug: string) => a.eval<number | null>(`(() => { const i = [...document.querySelectorAll('[data-testid="icon-${slug}"]')].find((e) => e.closest('[data-testid=pager-track]') && e.getBoundingClientRect().width > 0); if (!i) return null; const p = i.closest('[data-testid=pager]').getBoundingClientRect(), r = i.getBoundingClientRect(); return Math.floor((r.left + r.width / 2 - p.left) / p.width); })()`);
-const frameOff = (page: Page) => page.eval<{ x: number; y: number }>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+const frameOff = (page: Page) => page.eval<{ x: number; y: number }>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live], iframe[data-ready]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
 
 const mark = async (page: Page) => { await page.eval('window.__kept = 1'); await (await app())!.eval('window.__kept = 1'); };
 const kept = async (page: Page) => (await page.eval<number>('window.__kept')) === 1 && (await (await app())!.eval<number>('window.__kept')) === 1;

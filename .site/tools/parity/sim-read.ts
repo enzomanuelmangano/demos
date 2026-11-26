@@ -43,7 +43,7 @@ const open = async (width: number, path: string, height = 900) => {
   await cur.goto(origin + path);
   return cur;
 };
-const live = (page: Page) => until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')?.checkVisibility()`), 60000);
+const live = (page: Page) => until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')?.checkVisibility()`), 60000);
 const ready = async () => until(async () => (await (await app()).eval<string>(`document.querySelector('[data-testid=pager-track]')?.style.willChange ?? ''`)) === 'transform', 30000);
 const appPath = async () => (await (await app()).eval<string>('location.pathname')).replace(/\/$/, '');
 const path = (page: Page) => page.eval<string>('location.pathname');

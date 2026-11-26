@@ -33,11 +33,11 @@ const until = async (f: () => Promise<boolean>, ms = 30000) => { const t = Date.
 const hist = async (page: Page) => { const h = await page.send('Page.getNavigationHistory'); return { index: h.currentIndex, paths: h.entries.map((e: any) => new URL(e.url).pathname) as string[], entries: h.entries }; };
 const click = async (page: Page, x: number, y: number) => { for (const type of ['mousePressed', 'mouseReleased']) { await page.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 }); await Bun.sleep(60); } };
 const link = (page: Page, href: string) => page.eval<{ x: number; y: number }>(`(() => { const a = [...document.querySelectorAll('a[href="${href}"]')].find((a) => a.checkVisibility()); const r = a.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
-const live = (page: Page) => until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')?.checkVisibility()`));
+const live = (page: Page) => until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')?.checkVisibility()`));
 const back = async (page: Page) => { const h = await hist(page); await page.send('Page.navigateToHistoryEntry', { entryId: h.entries[h.index - 1].id }); };
 const forward = async (page: Page) => { const h = await hist(page); await page.send('Page.navigateToHistoryEntry', { entryId: h.entries[h.index + 1].id }); };
 const tapApp = async (page: Page, testId: string) => {
-  const off = await page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+  const off = await page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live], iframe[data-ready]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
   const p = await (await app(page))!.eval<any>(`(() => { const e = document.querySelector('[data-testid=${testId}]'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   if (p) await click(page, off.x + p.x, off.y + p.y);
 };
@@ -61,7 +61,7 @@ const launcher = (page: Page) => until(async () => (await appPath(page)).replace
   await Bun.sleep(800);
   check((await page.eval('location.pathname')) === '/demos' && await launcher(page), `3 Forward returns to /demos on the launcher (${await appPath(page)})`);
   // 4. The reader's own open and close (real input through the page).
-  const off = await page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+  const off = await page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live], iframe[data-ready]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
   const a = (await app(page))!;
   const icon = await a.eval<any>(`(() => { const r = document.querySelector('[data-testid=icon-calendar-days]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   const before = await hist(page);

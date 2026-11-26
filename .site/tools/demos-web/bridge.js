@@ -105,6 +105,24 @@
       if (el) pressEl(el);
     });
     for (const type of ['pointerdown', 'wheel', 'keydown']) addEventListener(type, (e) => { if (e.isTrusted) { pressUntil = 0; post({ demos: 'input' }); } }, { capture: true, passive: true });
+    // Boot and ready, told to the page (web/sim-hint.js; to the origin that serves this app: the page is the same
+    // deployment). `boot` at once: a new document in this frame, whose page clears its `ready` (one window's messages
+    // arrive in order, so a boot never lands after its own ready). `ready` once the launcher answers and shows what
+    // the still showed: the pager is driven, and every image on screen (the wallpaper, the first page's icons) has
+    // loaded; the page shows the frame then, not on its timer (load + 800 ms, which waits for every icon of every page).
+    try { window.parent.postMessage({ demos: 'boot' }, HOME); } catch {}
+    {
+      const t0 = performance.now();
+      const drawn = () => [...document.images].every((i) => {
+        const r = i.getBoundingClientRect();
+        return !(r.width && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight) || i.complete;
+      });
+      const look = () => {
+        if (document.querySelector('[data-testid="pager-track"]')?.style.willChange === 'transform' && drawn()) { try { window.parent.postMessage({ demos: 'ready' }, HOME); } catch {} return; }
+        if (performance.now() - t0 < 60000) setTimeout(look, 40);
+      };
+      look();
+    }
 
     // ---- A deep link (.site/docs/decisions.md D21): `{ demos: 'goto', slug, still }` ----
     // reactiive.io/demos/<slug> is /demos whose phone goes to that demo as a reader would: the launcher pages to the

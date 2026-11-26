@@ -22,12 +22,12 @@ await page.goto(`${origin}${mode === 'site' ? '/demos' : '/demos/app/'}`);
 let app: { eval: <T = any>(e: string) => Promise<T> } = { eval: (e) => page.eval(e) };
 let off = { x: 0, y: 0 };
 if (mode === 'site') {
-  for (let i = 0; i < 300 && !(await page.eval(`!!document.querySelector('iframe[data-motion~=live]')`)); i++) await Bun.sleep(100);
+  for (let i = 0; i < 300 && !(await page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')`)); i++) await Bun.sleep(100);
   const { targetInfos } = await cdp.send('Target.getTargets');
   const t = targetInfos.filter((t: any) => t.type === 'iframe' && t.url.includes('/demos/app/')).pop();
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId: t.targetId, flatten: true });
   app = { eval: async (e) => (await cdp.send('Runtime.evaluate', { expression: e, returnByValue: true, awaitPromise: true }, sessionId)).result.value };
-  off = await page.eval(`(() => { const r = [...document.querySelectorAll('iframe[data-motion~=live]')].find((f) => f.checkVisibility()).getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+  off = await page.eval(`(() => { const r = [...document.querySelectorAll('iframe[data-motion~=live], iframe[data-ready]')].find((f) => f.checkVisibility()).getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
 }
 for (let i = 0; i < 300 && !(await app.eval(`!!document.querySelector('[data-testid=icon-${slug}]')`)); i++) await Bun.sleep(100);
 await Bun.sleep(2500);

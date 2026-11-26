@@ -108,7 +108,7 @@ const page = await newPage(cdp, 1440, { height: 1000, scale: args.includes('--dp
 await page.goto(`${origin}/demos`);
 await page.eval(`sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off')`);
 await page.goto(`${origin}/demos`);
-await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')?.checkVisibility()`), 30000);
+await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')?.checkVisibility()`), 30000);
 let app = (await frameApp())!;
 await until(() => app.eval(`!!document.querySelector('[data-testid="web-device"]')`));
 await Bun.sleep(1500);

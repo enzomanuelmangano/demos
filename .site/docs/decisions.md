@@ -543,8 +543,13 @@ inside the app's own renderer process and the page's, per interaction; site vs t
   drawing, its height snapped too). No other demo has a `height` spring; width and the other non-physics properties
   spring as CSS `linear()` and were fine. Reported to Exact (`exact feedback note`). Regression check:
   `bun tools/parity/height-spring.ts <origin>` (exit 1 on a snap; 390 touch and 1440 mouse).
-- **The frame loads 600 ms in** (it waited for the hero's 1.6 s entrances): its start is in its own process, so it never
-  competed with them on the page's main thread; live 1.0-1.3 s sooner on cable and 4g (perf.md).
+- **The frame loads 200 ms in** (it waited for the hero's 1.6 s entrances, then 600 ms): its start is in its own
+  process, so it never competed with them on the page's main thread; live 1.0-1.3 s sooner on cable and 4g (perf.md).
+- **The frame shows when the app answers** (owner, 2026-11-26: "very often the sim is not responsive at once"): the
+  bridge posts `{ demos: 'ready' }` once the launcher's pager is driven, and the page shows the frame then
+  (`[data-ready]`, web/sim-hint.js); the frame's load + 800 ms stays as the fallback. Before, the still (a picture,
+  blind to the pointer) stayed ~0.8 s after the app could answer, and a tap in that time was lost. Headed Chrome,
+  local: shown and answering at ~0.7 s from navigation (was ~1.9 s).
 - **The sandbox costs the frame its HTTP cache.** Measured: a repeat visit to `/demos` re-downloads every file of the
   app, the content-hashed `immutable` ones included (144 requests, ~5 MB on cable), because a frame with an opaque
   origin gets a transient cache partition; the same files at the top level come from the cache. Kept anyway: the
