@@ -66,7 +66,7 @@ component AlertDrawer
       // The card grows out of the Continue pill. Folded, it is the pill's frame (btnInset() from the
       // sides and the bottom, 50 pt tall, the pill's corner) and sits under the pill; expanded, it is
       // the 311 pt floating sheet (the 300 pt content plus the 11 pt the concentric buttons rise).
-      // Its frame and corner ride the pill's spring. It is white like the page, so folded it
+      // Its frame rides the pill's spring (the corner takes its new value at once). It is white like the page, so folded it
       // cannot be told from it under the pill. Its content keeps the sheet's size and is clipped
       // by the growing frame.
       column position="absolute" overflow="hidden" corner-shape="-exact-continuous" background-color="#ffffff"

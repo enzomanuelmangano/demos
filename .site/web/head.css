@@ -286,3 +286,5 @@ html #exact-root{font-synthesis-style:auto}
 [data-motion~=sim-still]{opacity:0;transition:opacity 450ms cubic-bezier(.2,.7,.2,1)}
 html[data-still] [data-motion~=sim-still]{opacity:1}
 @media (prefers-reduced-motion:reduce){[data-motion~=sim-still]{transition:none}}
+/* /course's title (pages/course.contract): Exact refuses a clamp() line-height, so its two steps are here. */
+[data-motion~=course-title]{line-height:36px}@media (min-width:768px){[data-motion~=course-title]{line-height:40px}}

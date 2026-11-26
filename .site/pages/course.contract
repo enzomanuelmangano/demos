@@ -81,7 +81,8 @@ component CoursePage
       column width="100%" padding="16px 24px 128px" box-sizing="border-box" align-items="center"
         column width="100%" max-width="42rem" align-items="center" text-align="center" margin-bottom=64
           column align-items="center" data-motion="course-in"
-            text "Reanimate.dev" role="heading" aria-level=2 font-size=md(30, 36) line-height=md(36, 40) font-weight=600
+            // Its line height (36 px, 40 px from 768 px) is web/head.css's `course-title`: Exact d885904c drops a clamp() line-height.
+            text "Reanimate.dev" role="heading" aria-level=2 font-size=md(30, 36) font-weight=600 data-motion="course-title"
               letter-spacing="-0.02em" color="var(--color-text-primary)" margin-bottom=12
             text "The complete guide to React Native animations." max-width="28rem" margin-bottom=24 color="var(--color-text-secondary)"
             link href="https://reanimate.dev" target="_blank" display="flex" align-items="center" gap=8 padding="10px 20px" border-radius=9999

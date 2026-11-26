@@ -51,7 +51,6 @@ component IrSquare
   derive fade = kind == "final" ? irSpring() : irQuad(500)
   derive grow = kind == "timing" ? irQuad(300) : irSpring()
   derive radius = rounded ? (go ? 25 : 50) : 0
-  derive corner = plays == 0 ? "none" : kind == "final" ? irSpring() : kind == "springRadius" ? irQuad(500) : "none"
   // The square's corner transitions, whole (Exact checks every value an attribute can take, "translate none" too).
   derive barMove = plays == 0 ? "none" : kind == "final" ? `translate ${irSpring()}` : kind == "springRadius" ? `translate ${irQuad(500)}` : "none"
   derive discMove = plays == 0 ? "none" : kind == "final" ? `translate ${irSpring()}, scale ${irSpring()}` : kind == "springRadius" ? `translate ${irQuad(500)}, scale ${irQuad(500)}` : "none"
