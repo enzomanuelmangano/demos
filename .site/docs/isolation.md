@@ -121,9 +121,10 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
   (`e.source === window.parent`) and only from the origin that serves the app itself (the site and the app are one
   deployment: production's parent is `https://reactiive.io`, a preview's is that preview, a local server's is that
   server; no other origin, no wildcard); only these verbs, by testId (`[a-z0-9-]{1,80}`): `rect` (answers that element's
-  box) and `press` (a tap there); and, for a demo post's deep link (D21), `goto` (page the launcher to a slug's icon
+  box) and `press` (a tap there), which only the measuring tools send (the page never presses anything, D19
+  superseded); and, for a demo post's deep link (D21), `goto` (page the launcher to a slug's icon
   through the pager's own input, then press it; `slug: ''` stops, and closes the demo it opened). Answers go to that origin only, never `*`. Once the parent has spoken, real input is
-  reported (`input`) so the parent stops its demo. Nothing else is read, written or answered.
+  reported (`input`), so the page fades its arrow. Nothing else is read, written or answered.
 - **The frame's history is the page's (joint).** Framed, the module mirrors the router's entries (each state carries
   its index) and keeps the two in step: a route a parent's `press` opens replaces the entry, and its close replaces
   back to it (never a `go(-1)`), so the reader's Back never steps through the parent's demo and a full demo leaves no
@@ -153,9 +154,9 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
   and writes only the frame's own scrollers and posts nothing. A compose-time patch (`tools/demos-web/patches.ts`) lets
   the app's own pans (the pages, the pull to search, a card's close) hear the lift it dispatches when a drag leaves the
   phone's screen (the frame's pointer is not captured across it). Checked by `tools/parity/mouse-scroll.ts`.
-- **The site's end** (`web/sim-hint.js`, a head script): only on `/demos`, from 768 px, once per session; posts to the
-  frame's window (target `*`: a sandboxed frame's origin is opaque, so no other target can name it) and reads only the
-  frame's answers (`e.source === frame.contentWindow`).
+- **The site's end** (`web/sim-hint.js`, a head script): posts only `{ demos: 'page' }` to the frame's window, at
+  every route change and change of the frame's or the tab's visibility (target `*`: a sandboxed frame's origin is
+  opaque, so no other target can name it), and hears only the app's `input` (`e.source === frame.contentWindow`).
 
 Cost to the Demos app: none. Its sources and its own web build carry no bridge code; only the composed copy under
 `/demos/app/` does.

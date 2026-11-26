@@ -81,7 +81,7 @@ async function shot(page: Page, app: App, name: string) {
   const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip: { x: off.x + d.x, y: off.y + d.y, width: d.w, height: d.h, scale: 1 }, captureBeyondViewport: false });
   writeFileSync(join(shots, `${name}.png`), Buffer.from(data, 'base64'));
 }
-// The parent's press (the touch demo's channel, D19): a testId pressed as a tap would press it.
+// The parent's press (the measuring tools' channel; the page never sends it): a testId pressed as a tap would press it.
 const pressApp = (page: Page, target: string) => page.eval(`(() => { const f = [...document.querySelectorAll('iframe[title="Demos"]')].find((f) => f.checkVisibility()); f.contentWindow.postMessage({ demos: 'press', target: ${JSON.stringify(target)} }, '*'); })()`);
 const path = () => app.eval<string>('location.pathname');
 async function home(page: Page) {
@@ -103,7 +103,7 @@ async function openDemo(page: Page, slug: string) {
 }
 
 const page = await newPage(cdp, 1440, { height: 1000, scale: args.includes('--dpr') ? Number(args[args.indexOf('--dpr') + 1]) : 2 });
-// The page's one-time touch demo (web/sim-hint.js) and hero arrow are marked seen for this session, so nothing but
+// The hero arrow (web/sim-hint.js) is marked seen for this session, so nothing but
 // the probe drives the phone.
 await page.goto(`${origin}/demos`);
 await page.eval(`sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off')`);

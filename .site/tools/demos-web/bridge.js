@@ -3,8 +3,9 @@
    captured sources carry none of it. A classic script in the head: it runs before the app's modules, so the history
    methods it wraps are the ones the app's router calls. */
 (function () {
-  // Framed by another page (reactiive.io's /demos shows this app in a sandboxed frame and plays a one-time touch
-  // demo over it, .site/docs/decisions.md D19, .site/docs/isolation.md §6), the parent may ask, by message only:
+  // Framed by another page (reactiive.io's /demos shows this app in a sandboxed frame, .site/docs/isolation.md §6;
+  // the page itself never presses anything, D19 superseded: `rect` and `press` serve the measuring tools), the parent
+  // may ask, by message only:
   // `{ demos: 'rect', target }` (the box of the element whose testId is `target`, answered as
   // `{ demos: 'rect', target, rect }` in this window's CSS pixels, or rect null) and `{ demos: 'press', target }` (press
   // it as a tap would). Only from the parent window, and only from the origin that serves this app (the site and the
@@ -117,17 +118,23 @@
     // closes the demo the last goto opened, if it is still the one open (the page went to /demos), unless it says
     // `close: false` (the page went elsewhere: the demo stays for a return to its post). Progress is posted
     // back as `{ demos: 'goto', slug, state }`: paged, opened, missing, stopped.
-    let gotoRun = 0, gotoOpened = '';
+    // The reader's own hands come first (owner: nothing automatic may ever take the phone from them): a goto that
+    // arrives within 1.5 s of real input in the app is dropped (reported `stopped`), unless it is the post the reader
+    // just asked for ("Read article").
+    let gotoRun = 0, gotoOpened = '', lastInput = -1e9, readAsked = '';
     const openSlug = () => (/\/demo\/([^/]+)\/?$/.exec(here()) || [])[1] || '';
     const later = (ms) => new Promise((r) => setTimeout(r, ms));
     const nextFrame = () => new Promise((r) => { let done = false; const go = () => { if (!done) { done = true; r(); } }; requestAnimationFrame(go); setTimeout(go, 100); });
     const until = async (f, ms, live) => { const t = performance.now(); while (performance.now() - t < ms) { if (!live()) return false; if (f()) return true; await later(40); } return f(); };
     const track = () => document.querySelector('[data-testid="pager-track"]');
     const closeOpen = () => { if (closeNow()) return; const c = document.querySelector('[data-testid="close"]'); if (c) pressEl(c); };
-    for (const type of ['pointerdown', 'wheel', 'keydown']) addEventListener(type, (e) => { if (e.isTrusted) gotoRun++; }, { capture: true, passive: true });
+    for (const type of ['pointerdown', 'wheel', 'keydown']) addEventListener(type, (e) => { if (e.isTrusted) { gotoRun++; lastInput = performance.now(); } }, { capture: true, passive: true });
     const goto = async (slug, still) => {
       const run = ++gotoRun, live = () => run === gotoRun;
       const report = (state) => post({ demos: 'goto', slug, state });
+      const asked = readAsked === slug;
+      readAsked = '';
+      if (!asked && performance.now() - lastInput < 1500) return report('stopped');
       still = still || matchMedia('(prefers-reduced-motion: reduce)').matches;
       // The launcher is the app's once its pager is driven (the drive marks the track).
       if (!(await until(() => track()?.style.willChange === 'transform', 20000, live))) return live() && report('stopped');
@@ -193,7 +200,7 @@
     // right click or a long press, an open demo's on a right click alone (a long press there is the demo's gesture).
     const ARTICLES = new Set(window.__reactiiveArticles || []);
     const readable = (slug) => !!siteOrigin && ARTICLES.has(slug);
-    const read = (slug) => { if (readable(slug)) window.parent.postMessage({ demos: 'read', slug }, siteOrigin); };
+    const read = (slug) => { if (readable(slug)) { readAsked = slug; window.parent.postMessage({ demos: 'read', slug }, siteOrigin); } };
     window.__siteArticle = { has: readable, read };
     let menu = null, hold = null, pointer = 'mouse';
     const closeMenu = () => {

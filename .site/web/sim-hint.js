@@ -47,8 +47,6 @@
    ever presses anything in the app. The arrow takes no pointer and fades at the first input, hover of the phone, or
    leaving /demos. */
 (function () {
-  var KEY = 'reactiive.demos.hint';
-  var mark = function () { try { sessionStorage.setItem(KEY, '1'); } catch (e) {} };
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   // The measuring tools turn the arrow off for their session (`reactiive.demos.arrow` = 'off'); a reader never does.
   var noArrow = function () { try { return sessionStorage.getItem('reactiive.demos.arrow') === 'off'; } catch (e) { return false; } };
@@ -61,7 +59,6 @@
   function stop() {
     if (state !== 'armed') return;
     state = 'rest';
-    mark();
     clearTimeout(timer);
     off();
     unarrow(200);

@@ -646,8 +646,8 @@ launcher page that has it and open the animation". So the 109 posts whose demo t
   a sequence under way stops, and the demo stays open for a return to its post (the frame is hidden there).
 - **Robustness.** An icon not on the launcher (the four demos the web launcher hides as unstable: grid-visualizer,
   ios-home-bouncy, shared-transitions, time-machine) leaves the launcher as it is (`missing`). Any pointer, wheel or
-  key on the page, or real input in the app, stops the rest. The touch demo and the arrow (D19, `web/sim-hint.js`) are
-  for a reader who has not found the phone: a deep link marks both seen for the session. `web/sim-hint.js`'s frame host
+  key on the page, or real input in the app, stops the rest; a goto that arrives within 1.5 s of the reader's own input
+  in the app is dropped (owner, 2026-11-26: nothing automatic may take the phone from the reader). `web/sim-hint.js`'s frame host
   counts a post as `/demos` (`current`), so the frame's history rules hold there too.
 - **Phones (under 768 px).** The same hero; the button reads "Open the demo" and, like the still under it, opens
   `/demos/app/demo/<slug>`: one tap to the demo full screen (the app's close then shows its launcher; Back returns to
@@ -667,10 +667,10 @@ launcher page that has it and open the animation". So the 109 posts whose demo t
 ## D22. An arrow to the phone; Sponsor in the pill; TestFlight, quietly (owner, 2026-11-24)
 
 **The arrow** ("as soon as one lands on /demos, a pretty animated arrow toward the sim, as if to invite interacting
-with it"; no words, D17). `web/sim-hint.js`, before the touch demo (D19), on **every arrival** at `/demos` (a load, a
+with it"; no words, D17). `web/sim-hint.js`, on **every arrival** at `/demos` (a load, a
 reload, in-site navigation back to it; owner, later the same day: "the arrow must appear in every session", which
 replaced a once-per-session gate), from 768 px, on `/demos` only (a demo post, `/demos/<slug>`, never shows it).
-The touch demo after it stays once per session. Each arrival is its own visit: a callback of an earlier one (a quick
+Each arrival is its own visit: a callback of an earlier one (a quick
 back-and-forth) does nothing, leaving `/demos` cancels an arrow under way (200 ms fade), and listeners are added once
 per visit and removed with it. Skipped when the reader is already at the phone: the app reported input in the last
 3 s, or the pointer was last seen within 40 px of the phone. The measuring tools turn it off for their session
@@ -689,13 +689,12 @@ popstate) is not `/demos`:
   160 px starts under the pill's end and rises gently), or from the pill's end down to the phone's top (768-1023 px).
   The line draws on (stroke-dashoffset, 950 ms, `cubic-bezier(.6,0,.2,1)`: it lands slowly at the phone), the head
   follows (200 ms strong ease-out), it nudges 5 px toward the phone twice (2 x 1.2 s ease-in-out, transform only),
-  then eases 8 px into it while fading (450 ms); ~4 s. Then the touch demo starts (350 ms later): the arrow says
-  where, the demo says how. Sequenced, not merged: two cues at once compete for the eye.
+  then eases 8 px into it while fading (450 ms); ~4 s. It is the only invitation: nothing then presses anything in the
+  app (the touch demo that followed it, D19, is gone).
 - **Dismissed** at once (a 200 ms fade, held where it is) by any pointer, wheel or key, the app's own input, leaving
   `/demos`, a resize, or the pointer within 40 px of the phone (the frame is another process: the page sees no move on
-  the screen itself, so the bezel's surroundings count); any of these also skips the touch demo (the reader has found
-  the phone). Reduced motion: the same arrow, still, faded in (400 ms), held, faded out; no touch demo (D19).
-  Save-Data: the arrow (it costs no bytes), no touch demo.
+  the screen itself, so the bezel's surroundings count). Reduced motion: the same arrow, still, faded in (400 ms), held,
+  faded out. Save-Data: the arrow (it costs no bytes).
 - **Never in the way.** An absolutely placed `svg` (`pointer-events: none`, `aria-hidden`), no layout: CLS 0, no long
   task while it plays, clicks into the sim unchanged (the frame stays the hit target). Only the line's draw paints
   (a ~400 px path for 950 ms); the rest is compositor work.

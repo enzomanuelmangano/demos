@@ -23,7 +23,7 @@ const cpu = Number(opt('--cpu', '1'));
 const only = opt('--only')?.split(',');
 // --css <rules>: a style sheet added to the page (site mode) before the frame loads, for A/B of the embedding's costs.
 const css = opt('--css');
-// --hint-off: mark the one-time touch demo seen, so it never runs during a measurement.
+// --hint-off: the hint key set for the session (historical: the touch demo it gated is gone, D19).
 const hintOff = !args.includes('--hint-on');
 // --out <file>, else $SIM_OUT (a directory), else .out/parity/ under the working directory (dot directories are never captured).
 const out = opt('--out') ?? join(process.env.SIM_OUT ?? '.out/parity', `sim-frames-${mode}-${W}.json`);

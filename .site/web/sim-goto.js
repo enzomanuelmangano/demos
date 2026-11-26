@@ -12,9 +12,9 @@
         /demos (a link or Back), close the demo the goto opened; elsewhere (a post without a phone too), stop a sequence
         under way and leave the demo open for a return.
       - Any pointer, wheel or key on the page during the sequence stops the rest (input inside the app stops it there):
-        reading wheels the page, so a reader who scrolls at once keeps the launcher where it got to.
-      - The one-time touch demo (web/sim-hint.js) is for a reader who has not found the phone: a post marks it seen for
-        the session. The arrow plays on /demos only (D22).
+        reading wheels the page, so a reader who scrolls at once keeps the launcher where it got to. The app drops a
+        goto that comes within 1.5 s of the reader's own input in it (the reader's hands come first).
+      - The arrow plays on /demos only (D22).
       - Reduced motion: `still`, the pages jump and the demo opens without its flight.
    2. "Read article" (D25): the framed app's menus ask (`{ demos: 'read', slug }`, the app's slug), and the page goes to
       that post as a link would (the same tab, one history entry, Back returns), starting at the article's top; on that
@@ -35,7 +35,6 @@
     return frames().find(function (f) { var r = f.getBoundingClientRect(); return f.matches('[data-motion~=live]') && r.width > 0 && r.top < innerHeight && r.bottom > 0 && f.checkVisibility(); }) || null;
   }
   function say(f, m) { try { f.contentWindow.postMessage(m, '*'); } catch (e) {} }
-  function mark() { try { sessionStorage.setItem('reactiive.demos.hint', '1'); } catch (e) {} }
   function stop(close) {
     clearTimeout(timer);
     if (!running && !close) return;
@@ -58,7 +57,7 @@
   }
   function at(path) {
     var s = slugOf(path);
-    if (s) { mark(); if (s === want && (running || sent === s)) return; want = s; tries = 0; running = false; look(); return; }
+    if (s) { if (s === want && (running || sent === s)) return; want = s; tries = 0; running = false; look(); return; }
     want = null;
     if (onDemos(path)) { if (sent) stop(true); else stop(false); }
     else stop(false);
