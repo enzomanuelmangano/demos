@@ -107,6 +107,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 /* /demos's kept frame (app.contract, D17): shown from 1024 px on /demos only. */
 [data-motion~=sim-keep-layer]{display:none}
 @keyframes device-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+/* The title's D bearing (0.067em) pulled back where the hero is left-aligned under 640 px (owner, 2026-11-26). */
+@media (max-width:639px){[data-motion~=d-title]{margin-left:-.067em}}
 @media (min-width:1024px){
 :root{--sub-em:20.2;--W:clamp(720px,100vw - 480px,960px);--gap:clamp(64px,7vw,112px);--avail:calc(100dvh - 185px);--m:clamp(24px,5dvh,64px);--ph:clamp(320px,var(--avail) - 2 * var(--m) - 7px,min(700px,(var(--W) - var(--gap)) * .46 / .474359));--pw:calc(var(--ph) * .474359);--col:calc(var(--W) - var(--gap) - var(--pw))}
 main:has([data-motion~=d-page]){min-height:0 !important}

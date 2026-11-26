@@ -169,11 +169,10 @@ component DemosPage
               // Not pressable (owner, 2026-11-24): no handler, cursor or hover. The gradient paints only inside the box, and
               // the -0.04em tracking ends the box before the s's ink (1-2 px cut at 1024-1440 px): 0.1em of padding on the
               // right, given back by the margin, lets the ink in without moving anything.
-              // The D's left bearing (0.067em, 2.7 px at 40 px) set it in from the column the logo and the text start on:
-              // pulled back by it where the hero is left-aligned (under 640 px and from 1024 px: `centring` is 0 there).
+              // The D's left bearing (0.067em, 2.7 px at 40 px) set it in from the column: pulled back by it under 640 px
+              // (web/head.css d-title; from 1024 px the same rule's -.05em). Contract lengths take no em in calc().
               text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title"
                 font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em" padding-right="0.1em" margin-right="-0.1em"
-                margin-left=`min(0px, calc(-0.067em + ${centring()}))`
                 margin-top=steps(8, 32, 56, 56) margin-bottom=steps(14, 24, 28, 28)
             view width=centring() flex-shrink=1
           column data-motion="blur-in" data-delay="450"
