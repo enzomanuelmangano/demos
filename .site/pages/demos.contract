@@ -169,25 +169,26 @@ component DemosPage
               // right, given back by the margin, lets the ink in without moving anything.
               text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title"
                 font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em" padding-right="0.1em" margin-right="-0.1em"
-                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(20, 32, 36, 36)
+                margin-top=steps(8, 32, 56, 56) margin-bottom=steps(14, 24, 28, 28)
             view width=centring() flex-shrink=1
           column data-motion="blur-in" data-delay="450"
             // From 640 px two lines, one gradient across both (centred, left from 1024 px); under it the same two lines,
-            // left-aligned, 320 px at most (D23: one wrapped paragraph left "WebGPU" alone on its line at 390 px).
+            // left-aligned, 320 px at most (D23: one wrapped paragraph left "WebGPU" alone on its line at 390 px). Broken after
+            // "built with" (owner, 2026-11-26: the two lines balanced), a little closer to the title than live's.
             column class=Gradient data-motion="lift-10 d-sub" font-size=steps(14, 16, 18, 18) line-height=1.55
               letter-spacing="-0.01em" max-height=sm(0, 200) overflow="hidden"
               row
                 view width=centring() flex-shrink=1
-                text "100+ animations" flex-shrink=0
+                text "100+ animations built with" flex-shrink=0
                 view width=centring() flex-shrink=1
               row
                 view width=centring() flex-shrink=1
-                text "built with Exact, Rust and WebGPU" flex-shrink=0
+                text "Exact, Rust and WebGPU" flex-shrink=0
                 view width=centring() flex-shrink=1
             column class=Gradient data-motion="lift-10" font-size="0.875rem" line-height=1.55 letter-spacing="-0.01em"
               max-width=320 max-height=sm(200, 0) overflow="hidden" aria-hidden=true
-              text "100+ animations"
-              text "built with Exact, Rust and WebGPU"
+              text "100+ animations built with"
+              text "Exact, Rust and WebGPU"
           row margin-top=sm(24, 28) data-motion="d-pill"
             view width=centring() flex-shrink=1
             column flex-shrink=0 data-motion="blur-in" data-delay="550"
