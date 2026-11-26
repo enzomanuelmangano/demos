@@ -249,6 +249,8 @@ and keyframes from Exact (feedback noted).
 
 ## D15. The accounts: the reference's API as the backend, its client ported, off without the env (branch site-env, 2026-11-23)
 
+**Amended by D26**: no new subscriptions; a reader without a plan is sent to GitHub Sponsors, a subscriber can only see the plan and cancel it.
+
 - **Backend: the reference's own Next API, unchanged.** Locally `tools/local-env/api.ts` runs it from a `git archive`
   copy (never the reference clone) on :3000 with the owner's env file in its process environment only;
   `tools/serve.ts` proxies `/api/*` same-origin (redirects unfollowed, so OAuth works). In production compose's
