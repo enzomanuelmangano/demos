@@ -106,16 +106,26 @@ if (import.meta.main) {
     // On Linux the web build reads the native modules' factory roster in Chrome (Exact d885904c host/web-js/module.mjs,
     // Bun.WebView with Playwright's build). A CI runner (Ubuntu's AppArmor refuses Chrome's sandbox) and Vercel's
     // build (root) both need it unsandboxed: a wrapper, as Exact's CHROME, adds --no-sandbox. macOS uses WebKit.
+    // The browser is the one Exact would pick (scripts/agent-launch.mjs chromium(): Playwright's headless shell); its
+    // stderr goes to chrome.log, printed when the build fails (a missing system library shows there).
     const chrome: Record<string, string> = {};
+    const chromeLog = join(scratch, 'chrome.log');
     if (process.platform === 'linux' && !process.env.CHROME) {
-      const real = spawnSync('bun', ['-e', `console.log(require(${JSON.stringify(join(exact, 'node_modules/playwright-core'))}).chromium.executablePath())`], { encoding: 'utf8' }).stdout.trim();
+      const pick = `import { chromium } from ${JSON.stringify(join(exact, 'scripts/agent-launch.mjs'))}; const c = chromium(); console.log(c.unavailable ? '' : c.executable);`;
+      const real = spawnSync('bun', ['-e', pick], { encoding: 'utf8' }).stdout.trim().split('\n').pop() ?? '';
       if (real) {
         const wrapper = join(scratch, 'chrome-no-sandbox');
-        writeFileSync(wrapper, `#!/bin/sh\nexec ${JSON.stringify(real)} --no-sandbox --disable-dev-shm-usage "$@"\n`, { mode: 0o755 });
+        writeFileSync(wrapper, `#!/bin/sh\nexec ${JSON.stringify(real)} --no-sandbox --disable-dev-shm-usage --disable-gpu "$@" 2>>${JSON.stringify(chromeLog)}\n`, { mode: 0o755 });
         chrome.CHROME = wrapper;
+        console.log(`demos-web: Chrome for the factory roster: ${real} (unsandboxed)`);
       }
     }
-    run('bun', ['exact.mjs', 'web-build', '--out', 'dist', '--render', 'js'], { CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR ?? join(scratch, 'target'), ...chrome });
+    try {
+      run('bun', ['exact.mjs', 'web-build', '--out', 'dist', '--render', 'js'], { CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR ?? join(scratch, 'target'), ...chrome });
+    } catch (e) {
+      if (existsSync(chromeLog)) console.error(`demos-web: Chrome's stderr:\n${readFileSync(chromeLog, 'utf8').split('\n').slice(-40).join('\n')}`);
+      throw e;
+    }
     const dist = join(scratch, 'dist');
     const routes = JSON.parse(readFileSync(join(dist, 'routes.json'), 'utf8'));
     if (routes.base !== BASE) throw new Error(`routes.json base ${routes.base}, expected ${BASE}`);
