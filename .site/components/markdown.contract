@@ -267,8 +267,10 @@ component Blocks
       for r in block.repo key=r.url
         GithubCard(block=block, repo=r)
     else if block.kind == "image"
-      image block.src alt=block.text width="100%" aspect-ratio=(block.width > 0 ? `${block.width} / ${block.height}` : "auto")
-        min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-bottom=block.mb margin-left=(block.depth * 26)
+      // In a list item the image starts at the item's indent and ends at the column's edge, as live's (its width is
+      // the column's less the indent, not the column's: a full width overflowed by the indent).
+      image block.src alt=block.text width=(block.depth > 0 ? `calc(100% - ${block.depth * 26}px)` : "100%") aspect-ratio=(block.width > 0 ? `${block.width} / ${block.height}` : "auto")
+        min-height=180 max-height=480 object-fit="contain" border-radius="1rem" margin-top=block.mt margin-bottom=block.mb margin-left=(block.depth * 26)
     else if block.kind == "math"
       // MathJax's display container on live: centred, 16 px above and below the formula.
       row justify-content="center" margin-bottom=block.mb padding="16px 0"

@@ -384,24 +384,40 @@ async function convert(page: Page, meta: any) {
     return out;
   };
 
-  const image = (n: any, depth: number) => {
+  const image = (n: any, depth: number, mt = 0, mb = 20) => {
     const url: string = n.url;
-    if (/\.mp4$/i.test(url)) { block({ kind: 'video', depth, src: url, mb: 20 }); return; }
-    if (/^[a-z]+:/i.test(url)) { block({ kind: 'image', depth, src: url, text: n.alt ?? '', mb: 20 }); return; }
+    if (/\.mp4$/i.test(url)) { block({ kind: 'video', depth, src: url, mb }); return; }
+    if (/^[a-z]+:/i.test(url)) { block({ kind: 'image', depth, src: url, text: n.alt ?? '', mt, mb }); return; }
     const a = asset(page.kind, page.slug, url.replace(/^\.\//, ''));
-    block({ kind: 'image', depth, src: a.url, width: a.width, height: a.height, text: n.alt ?? '', mb: 20 });
+    block({ kind: 'image', depth, src: a.url, width: a.width, height: a.height, text: n.alt ?? '', mt, mb });
   };
 
   // A paragraph with pictures among its words (leaving-patreon's list items): its text, each picture on a line of its
   // own, the text after it. The line breaks around a picture are the picture's own.
+  // As live draws it (the picture inline in its paragraph): each line break before a picture past the first is an
+  // empty line (28 px) above it, and a picture that ends its paragraph ends a line box 24 px below it.
+  const isBreak = (n: any) => n.type === 'break' || (n.type === 'mdxJsxTextElement' && n.name === 'br');
   const pieces = (nodes: any[]): any[][] => {
     const out: any[][] = [[]];
-    for (const n of nodes) if (n.type === 'image') out.push([n], []); else out[out.length - 1].push(n);
-    const blank = (n: any) => n.type === 'break' || (n.type === 'mdxJsxTextElement' && n.name === 'br') || (n.type === 'text' && !n.value.trim());
-    return out.map((p) => { const q = [...p]; while (q.length && blank(q[0])) q.shift(); while (q.length && blank(q[q.length - 1])) q.pop(); return q; }).filter((p) => p.length);
+    const blank = (n: any) => isBreak(n) || (n.type === 'text' && !n.value.trim());
+    for (const n of nodes) if (n.type === 'image') {
+      const prev = out[out.length - 1];
+      let breaks = 0;
+      for (let i = prev.length - 1; i >= 0 && blank(prev[i]); i--) if (isBreak(prev[i])) breaks++;
+      n.__mt = prev.some((x) => !blank(x)) ? Math.max(0, breaks - 1) * 28 : 0;
+      out.push([n], []);
+    } else out[out.length - 1].push(n);
+    const kept = out.map((p) => { const q = [...p]; while (q.length && blank(q[0])) q.shift(); while (q.length && blank(q[q.length - 1])) q.pop(); return q; }).filter((p) => p.length);
+    const end = kept[kept.length - 1];
+    if (kept.length > 1 && end?.[0]?.type === 'image') end[0].__mb = 44;
+    return kept;
   };
   const after = (rest: any[][], depth: number) => {
-    for (const p of rest) if (p[0].type === 'image') image(p[0], depth); else block({ kind: 'paragraph', depth, runs: runs(p), mb: 20 });
+    // Text that ends a paragraph after a picture: its last line box is 4 px taller on live (the picture's line).
+    rest.forEach((p, i) => {
+      if (p[0].type === 'image') image(p[0], depth, p[0].__mt ?? 0, p[0].__mb ?? 20);
+      else block({ kind: 'paragraph', depth, runs: runs(p), mb: i === rest.length - 1 && rest.some((q) => q[0].type === 'image') ? 24 : 20 });
+    });
   };
 
   // A list: its items flattened into `item` blocks (depth = nesting), an item's further children indented under it.
@@ -614,6 +630,24 @@ function checkMeta(slug: string, meta: any) {
 
 const DOC_TITLES: Record<string, string> = { terms: 'Terms of Service', privacy: 'Privacy Policy', license: 'License' };
 const articles: any[] = [];
+// A card's cover (the /articles and series grids): at most CARD_WIDTH wide, WebP. A card is ~240 px wide in the
+// desktop grid and ~350 px on a phone, so 720 px covers both at 2x; the article's own header keeps asset()'s size.
+// Static HTML has no srcset in Exact, so one size that fits every card is the whole of it.
+const CARD_WIDTH = 720;
+function cardCover(kind: string, slug: string, rel: string, full: { url: string; width: number; height: number }) {
+  const file = join(SRC, kind, slug, rel);
+  if (full.width <= CARD_WIDTH) return full;
+  const name = `${basename(rel, extname(rel))}-${CARD_WIDTH}w-card.webp`;
+  const out = join(ASSETS, kind, slug, dirname(rel), name);
+  if (!existsSync(out) || statSync(out).mtimeMs < statSync(file).mtimeMs) {
+    const r = HAS_MAGICK
+      ? spawnSync('magick', [file, '-resize', `${CARD_WIDTH}x>`, '-quality', '80', '-define', 'webp:method=6', out])
+      : spawnSync(process.execPath, [join(import.meta.dir, 'webp.ts'), file, out, String(CARD_WIDTH)]);
+    if (r.status !== 0) throw new Error(`card cover failed on ${file}: ${r.stderr}`);
+  }
+  return { url: `${ASSET_URL}/${kind}/${slug}/${join(dirname(rel), name).replace(/^\.\//, '')}`, width: CARD_WIDTH, height: Math.round(full.height * CARD_WIDTH / full.width) };
+}
+
 for (const slug of readdirSync(join(SRC, 'articles')).sort()) {
   if (!existsSync(join(SRC, 'articles', slug, 'index.mdx'))) throw new Error(`.content/articles/${slug}: no index.mdx`);
   const meta = JSON.parse(readFileSync(join(SRC, 'articles', slug, 'index.json'), 'utf8'));
@@ -622,7 +656,8 @@ for (const slug of readdirSync(join(SRC, 'articles')).sort()) {
   const cover = asset('articles', slug, String(meta.featuredImage).replace(/^\.\//, ''));
   const page = { slug, title: meta.title, description: meta.subtitle, image: cover.url, date: meta.date, tags: meta.tags ?? [], blocks };
   writeFileSync(join(OUT, 'articles', `${slug}.ts`), `export default ${JSON.stringify(page)};\n`);
-  articles.push({ slug, title: meta.shortTitle ?? meta.title, description: meta.subtitle, value: shortDate(meta.date), date: meta.date, href: `/articles/${slug}`, series: meta.series ?? '', cover: cover.url, coverWidth: cover.width, coverHeight: cover.height });
+  const card = cardCover('articles', slug, String(meta.featuredImage).replace(/^\.\//, ''), cover);
+  articles.push({ slug, title: meta.shortTitle ?? meta.title, description: meta.subtitle, value: shortDate(meta.date), date: meta.date, href: `/articles/${slug}`, series: meta.series ?? '', cover: card.url, coverWidth: card.width, coverHeight: card.height });
 }
 articles.sort((a, b) => b.date.localeCompare(a.date));
 const docs: string[] = [];
