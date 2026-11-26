@@ -76,7 +76,9 @@ component AlertDrawer
         border-radius=(isExpanded ? concentricRadius(10, 311) : concentricRadius(btnInset(), 50))
         box-shadow=(isExpanded ? "0px 2px 30px rgba(0, 0, 0, 0.1)" : "0px 0px 0px rgba(0, 0, 0, 0)")
         -exact-layout-transition=drawerSpring()
-        transition=`border-radius ${drawerSpring()}, box-shadow ${drawerSpring()}`
+        // Exact d885904c no longer transitions `border-radius` (a layout property): the corner takes its new value
+        // at once while the frame rides -exact-layout-transition; the shadow keeps the spring.
+        transition=`box-shadow ${drawerSpring()}`
         pointer-events=(isExpanded ? "auto" : "none") aria-hidden=(not isExpanded) testId="card"
         column position="absolute" left=0 bottom=0 width=floatingWidth(w, 10) height=311
           box-sizing="border-box" padding=16 -exact-layout-transition=drawerSpring()
