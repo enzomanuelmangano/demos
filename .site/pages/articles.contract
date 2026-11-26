@@ -43,16 +43,19 @@ component ArticleList
           view data-motion=(i < 3 ? "card-in" : "card-in wait")
             ArticleCard(card=c)
 
-// /articles/:post and /docs/:post (app/articles/[post]/page.tsx): the MDX in a 768 px column, 24 px down.
+// /articles/:post, /docs/:post and /demos/:demo (app/articles/[post]/page.tsx, app/demos/[post]/page.tsx): the MDX in a
+// 768 px column, 24 px down. `side`: a demo post whose phone stands beside the column from 1024 px (web/head.css
+// post-sim, docs/decisions.md D25).
 component ArticlePage
   props
     page: Page
     article: bool
+    side: bool
     copied: string
     copy: action
   slot
   view
-    column width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box" flex=1
+    column width="100%" max-width="48rem" margin-left="auto" margin-right="auto" padding-left=24 padding-right=24 box-sizing="border-box" flex=1 data-motion=(side ? "post-sim" : "post-plain")
       column padding-top=24 padding-bottom=24
         column flex=1 min-width="100%"
           for b in page.blocks key=b.id

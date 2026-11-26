@@ -60,8 +60,29 @@
    its overrides) and the terminal theme's command colour. The runs between comments are coloured by the CSS Custom
    Highlight API (web/reveal.js registers one highlight per letter); a comment is its own italic span. */
 ::highlight(tok-a){color:#abb2bf}::highlight(tok-f){color:#4b9fe4}::highlight(tok-k){color:#c678dd}::highlight(tok-n){color:#d19a66}
-::highlight(tok-y){color:#e5c07b}::highlight(tok-s){color:#e06c75}::highlight(tok-w){color:#f2f5f7}::highlight(tok-t){color:rgb(98, 114, 164)}
+::highlight(tok-y){color:#e5c07b}::highlight(tok-s){color:#e06c75}::highlight(tok-w){color:#f2f5f7}::highlight(tok-t){color:rgb(98, 114, 164)}::highlight(tok-r){color:#56b6c2}
 [data-tok=c]{color:#8b919d;font-style:italic}
 /* The same colours as spans, for a browser without the Highlight API (web/reveal.js makes them only there). */
 [data-hl]>[data-tok=a]{color:#abb2bf}[data-hl]>[data-tok=f]{color:#4b9fe4}[data-hl]>[data-tok=k]{color:#c678dd}[data-hl]>[data-tok=n]{color:#d19a66}
-[data-hl]>[data-tok=y]{color:#e5c07b}[data-hl]>[data-tok=s]{color:#e06c75}[data-hl]>[data-tok=w]{color:#f2f5f7}[data-hl]>[data-tok=t]{color:rgb(98, 114, 164)}
+[data-hl]>[data-tok=y]{color:#e5c07b}[data-hl]>[data-tok=s]{color:#e06c75}[data-hl]>[data-tok=w]{color:#f2f5f7}[data-hl]>[data-tok=t]{color:rgb(98, 114, 164)}[data-hl]>[data-tok=r]{color:#56b6c2}
+/* A demo post's media (components/demo-post.contract, D25), as the reference's `Demo`: a phone gets the video then a
+   line of links; from 768 px the video beside the QR card (256 px). The "Try the live demo" button is for a window
+   with no phone beside the article (under 1024 px). */
+[data-motion~=post-media]{display:flex;flex-direction:column;gap:16px}
+[data-motion~=post-qr]{display:none !important}
+[data-motion~=post-press]{transition:transform 150ms var(--ease-snappy),background-color 150ms var(--ease-snappy)}
+[data-motion~=post-press]:active{transform:scale(.97)}
+[data-motion~=post-ink]{filter:brightness(0)}
+/* The video's box is its own shape inside the 16:9 one (the same picture as live's `object-contain`), so its largest
+   paint counts what it paints, not the empty sides. */
+[data-motion~=post-video]{display:flex;justify-content:center}
+[data-motion~=post-video]>video{width:auto !important;max-width:100%;height:100% !important;aspect-ratio:auto 9 / 19.5}
+[data-motion~=post-feedback]{display:flex;flex-direction:column;align-items:flex-start;gap:20px}
+@media (min-width:640px){[data-motion~=post-feedback]{flex-direction:row;align-items:center;gap:24px}}
+@media (min-width:768px){
+[data-motion~=post-media]{flex-direction:row;gap:24px}
+[data-motion~=post-video]{flex:1 1 0;width:auto !important}
+[data-motion~=post-qr]{display:flex !important;width:256px}
+[data-motion~=post-try]{display:none !important}
+}
+@media (min-width:1024px){[data-motion~=post-launch]{display:none !important}}

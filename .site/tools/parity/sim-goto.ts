@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// A demo post's deep link (docs/decisions.md D21): /demos/<slug> is /demos, whose framed phone pages to the demo and
-// opens it (web/sim-goto.js asks; tools/demos-web/bridge.js `goto` does it inside the app).
+// A demo post's deep link (docs/decisions.md D21, D25): /demos/<slug> is the article, whose phone beside it (from
+// 1024 px) pages to the demo and opens it (web/sim-goto.js asks; tools/demos-web/bridge.js `goto` does it inside the app).
 //   bun tools/parity/sim-goto.ts <origin> [--headed] [--only 1,3] [--reps 3] [--out .out/parity/sim-goto]   (exit 1 on any failure)
 // 1. For three posts on different launcher pages (the first, a middle and the last page, read from the launcher's
 //    layout at run time): the page cold at /demos/<slug> (1440x900); the pager moves to the icon's page, the demo
@@ -15,13 +15,15 @@
 //    opens it again; a link to /demos from the post closes it too.
 // 4. Input during the sequence (a wheel on the page) stops it: no demo opens, the URL stays.
 // 5. Reduced motion: the pages jump (no frame between), the demo opens.
-// 6. A phone (390x844, touch): no frame loads; "Open the demo" links to /demos/app/demo/<app>; a tap opens that demo
-//    full screen; Back returns to /demos/<slug>.
+// 6. A phone (390x844, touch): no frame loads; "Try the live demo" links to /demos/app/demo/<app>; a tap opens that
+//    demo full screen; Back returns to /demos/<slug>.
 // 7. A post whose demo has no icon on the web launcher (an unstable demo): the launcher stays as it is.
+// 8. Reading: the article scrolls under the header while the phone stays where it is; a post whose demo the app has
+//    not shows no phone, and coming back to one with a phone finds the same frame (no reload).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { launch, newPage, type Page } from './cdp.ts';
-import { DEMO_POSTS } from '../demos-web/legacy-posts.ts';
+import { DEMO_POSTS, NOT_IN_APP } from '../demos-web/legacy-posts.ts';
 
 const args = process.argv.slice(2);
 const opt = (n: string, d?: string) => { const i = args.indexOf(n); return i < 0 ? d : args[i + 1]; };
@@ -66,6 +68,9 @@ const SAMPLER = `(() => { if (window.__fs) return; const s = window.__fs = { t: 
 const dropped = (t: number[], vsync: number) => t.slice(1).reduce((n, v, i) => n + Math.max(0, Math.round((v - t[i]) / vsync) - 1), 0);
 const appPage = (a: App, slug: string) => a.eval<number | null>(`(() => { const i = [...document.querySelectorAll('[data-testid="icon-${slug}"]')].find((e) => e.closest('[data-testid=pager-track]') && e.getBoundingClientRect().width > 0); if (!i) return null; const p = i.closest('[data-testid=pager]').getBoundingClientRect(), r = i.getBoundingClientRect(); return Math.floor((r.left + r.width / 2 - p.left) / p.width); })()`);
 const frameOff = (page: Page) => page.eval<{ x: number; y: number }>(`(() => { const f = [...document.querySelectorAll('iframe[data-motion~=live]')].find((f) => f.checkVisibility()); const r = f.getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+
+const mark = async (page: Page) => { await page.eval('window.__kept = 1'); await (await app())!.eval('window.__kept = 1'); };
+const kept = async (page: Page) => (await page.eval<number>('window.__kept')) === 1 && (await (await app())!.eval<number>('window.__kept')) === 1;
 
 // ---------------------------------------------------------------- the launcher's pages, from its layout
 const pages: Record<string, number> = {};
@@ -187,14 +192,13 @@ if (part(3)) {
   const d = chosen.at(-1)!, d2 = chosen[0];
   const page = await open(cdp, 1440, { height: 900 });
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: LISTEN + `try { sessionStorage.setItem('reactiive.demos.hint', '1'); sessionStorage.setItem('reactiive.demos.arrow', 'off') } catch {}` });
-  let loads = 0;
-  page.on((e) => { if (e.method === 'Page.frameNavigated' && e.params.frame.parentId && String(e.params.frame.url).includes('/demos/app/')) loads++; });
   await page.goto(`${origin}/demos`);
   await live(page); await Bun.sleep(1500);
-  const loads0 = loads;
-  // A link as an article would hold it (the router takes any same-origin link to a route of the site).
+  // The same documents throughout: a mark on the page and in the app (a reload of either would lose it).
+  await mark(page);
+  // A link as a page of the site holds it (inside the app's root, so the router takes it in place).
   const go = async (href: string) => {
-    await page.eval(`(() => { const a = document.createElement('a'); a.href = ${JSON.stringify(href)}; a.id = 'probe-link'; a.textContent = 'x'; a.style.cssText = 'position:fixed;left:4px;bottom:4px;z-index:99;font-size:12px'; document.getElementById('probe-link')?.remove(); document.body.appendChild(a); })()`);
+    await page.eval(`(() => { const a = document.createElement('a'); a.href = ${JSON.stringify(href)}; a.id = 'probe-link'; a.textContent = 'x'; a.style.cssText = 'position:fixed;left:4px;bottom:4px;z-index:99;font-size:12px'; document.getElementById('probe-link')?.remove(); document.getElementById('exact-root').appendChild(a); })()`);
     const r = await page.eval<any>(`(() => { const r = document.getElementById('probe-link').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
     await click(page, r.x, r.y);
   };
@@ -203,7 +207,7 @@ if (part(3)) {
   await Bun.sleep(800);
   const h = await hist(page);
   check(opened && (await path(page)) === `/demos/${d.slug}`, `3 in-site link to /demos/${d.slug} with the frame live: the demo opened, URL /demos/${d.slug}`);
-  check(loads === loads0, `3 the kept frame was not reloaded (${loads - loads0} loads)`);
+  check(await kept(page), '3 neither the page nor the kept frame was reloaded');
   check(h.paths.filter((p) => p !== 'blank').join(' ') === `/demos /demos/${d.slug}`, `3 the history is the reader's two pages: ${h.paths.join(' ')}`);
   await back(page);
   const closed = await until(async () => (await path(page)) === '/demos', 8000) && await launcher();
@@ -214,7 +218,7 @@ if (part(3)) {
   await Bun.sleep(800);
   // Another post in-site: the open demo closes and the other opens (no reload).
   await go(`/demos/${d2.slug}`);
-  check(await until(async () => (await appPath()) === `/demos/app/demo/${d2.app}`, 20000) && loads === loads0, `3 a second post in-site: ${d2.app} open, no reload`);
+  check(await until(async () => (await appPath()) === `/demos/app/demo/${d2.app}`, 20000) && await kept(page), `3 a second post in-site: ${d2.app} open, no reload`);
   await Bun.sleep(800);
   await go('/demos');
   check(await until(async () => (await path(page)) === '/demos', 8000) && await launcher(), `3 a link to /demos from the post closes the demo (${await appPath()})`);
@@ -272,9 +276,9 @@ if (part(6)) {
   const page = await open(cdp, 390, { height: 844, scale: 3 });
   await page.goto(`${origin}/demos/${d.slug}`); await Bun.sleep(2500);
   const frame = await page.eval<boolean>(`[...document.querySelectorAll('iframe[title="Demos"]')].some((f) => f.src.includes('/demos/app/'))`);
-  const btn = await page.eval<any>(`(() => { const a = document.querySelector('[data-testid=open-demos]'); if (!a) return null; const r = a.getBoundingClientRect(); return { href: a.getAttribute('href'), text: a.textContent.trim(), x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  const btn = await page.eval<any>(`(() => { const a = document.querySelector('[data-testid=open-demo]'); if (!a) return null; const r = a.getBoundingClientRect(); return { href: a.getAttribute('href'), text: a.textContent.trim(), x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   check(!frame, '6 phone: no frame loads');
-  check(btn?.href === `/demos/app/demo/${d.app}` && btn?.text === 'Open the demo', `6 phone: the button is "${btn?.text}" → ${btn?.href}`);
+  check(btn?.href === `/demos/app/demo/${d.app}` && btn?.text === 'Try the live demo' && btn.y < 844, `6 phone: the button "${btn?.text}" → ${btn?.href}, in the first screen (y ${Math.round(btn?.y)})`);
   const before = await shot(page, `phone-${d.slug}`);
   await page.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: btn.x, y: btn.y }] }); await Bun.sleep(60);
   await page.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -299,6 +303,31 @@ if (part(7) && report.missing.length) {
   await Bun.sleep(800);
   check(said && (await appPath()).replace(/\/$/, '') === '/demos/app' && (await path(page)) === `/demos/${slug}`, `7 ${slug} (no icon on the web launcher): the phone stays on its launcher, the URL stays (${await appPath()})`);
   void d;
+  await page.close();
+}
+
+// ---------------------------------------------------------------- 8. reading, and a post without a phone
+if (part(8)) {
+  const d = chosen[0], bare = NOT_IN_APP[0];
+  const page = await open(cdp, 1440, { height: 900 });
+  await page.goto(`${origin}/demos/${d.slug}`);
+  await live(page); await Bun.sleep(1500);
+  await mark(page);
+  const box = () => page.eval<any>(`(() => { const f = [...document.querySelectorAll('iframe[title="Demos"]')].find((f) => f.checkVisibility()); const h = document.querySelector('main h1').getBoundingClientRect(), a = document.querySelector('[data-motion~=post-sim]').getBoundingClientRect(); if (!f) return null; const r = f.getBoundingClientRect(), sw = Math.min(420, (r.height - 48) * 0.448718); return { top: Math.round(r.top), left: Math.round(r.left + (r.width - sw) / 2), title: Math.round(h.top), right: Math.round(a.right), hit: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === f, y: scrollY }; })()`);
+  const b0 = await box();
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: 200, y: 400, deltaX: 0, deltaY: 900 }); await Bun.sleep(900);
+  const b1 = await box();
+  check(!!b0 && !!b1 && b1.y > 600 && b1.title < b0.title && b1.top === b0.top, `8 the article scrolls (${b1?.y} px), the phone stays (top ${b0?.top} → ${b1?.top})`);
+  check(!!b1 && b1.right <= b1.left && b1.hit, `8 the phone beside the column (column to ${b1?.right}, screen from ${b1?.left}), taking the pointer`);
+  await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`); await Bun.sleep(600);
+  const footer = await page.eval<boolean>(`(() => { const as = [...document.querySelectorAll('footer a')].filter((a) => a.checkVisibility()); return as.length > 0 && as.every((a) => { const r = a.getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('a') === a; }); })()`);
+  check(footer, "8 the footer's links are clear at the page's end");
+  const go = async (href: string) => page.eval(`(() => { const a = document.createElement('a'); a.href = ${JSON.stringify(href)}; a.hidden = true; document.getElementById('exact-root').appendChild(a); a.click(); a.remove(); })()`);
+  await go(`/demos/${bare}`);
+  const gone = await until(async () => (await path(page)) === `/demos/${bare}` && await page.eval<boolean>(`document.querySelector('main h1')?.textContent.length > 0 && ![...document.querySelectorAll('iframe[title="Demos"]')].some((f) => f.checkVisibility()) && !!document.querySelector('[data-motion~=post-plain]') && scrollY === 0`), 8000);
+  check(gone, `8 /demos/${bare} (no demo in the app): the article at its top, no phone`);
+  await go(`/demos/${d.slug}`);
+  check(await until(async () => (await box()) !== null && (await appPath()) === `/demos/app/demo/${d.app}`, 20000) && await kept(page), `8 back to a post with a phone: the same page and frame, ${d.app} open`);
   await page.close();
 }
 

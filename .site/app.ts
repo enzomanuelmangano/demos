@@ -17,9 +17,10 @@ const sources: Sources = {
   articleSlugs: async () => content.articleSlugs,
   docSlugs: async () => content.docSlugs,
   seriesSlugs: async () => content.seriesSlugs,
-  // The demo posts (decisions.md D21): /demos/<slug> is /demos with that demo's title, its phone opening the demo.
+  // The demo posts (decisions.md D25): /demos/<slug>'s article, and the app's slug of its demo ('' without one).
   demoPostSlugs: async () => content.demoPostSlugs,
-  loadDemoPost: async ([slug]) => content.demoPosts[slug] ?? { title: '', app: '' },
+  loadDemoPost: async ([slug]) => load(content.posts, slug),
+  loadDemoApp: async ([slug]) => content.demoApps[slug] ?? '',
   loadArticle: async ([slug]) => load(content.articles, slug),
   loadDoc: async ([slug]) => load(content.docs, slug),
   // The cards of /articles ("*") or of one series; none elsewhere.

@@ -107,6 +107,12 @@ exceptions. CI triggers (proof 4): unchanged.
 The site never imports or reads the Demos app; at run time the only contact is `postMessage` between `/demos` and the
 sandboxed frame of `/demos/app/`, both ends small and guarded:
 
+- **"Read article" (D25)** adds one message each way and nothing to the app's sources: `tools/compose.ts` inlines the
+  list of demos with an article before the bridge; the bridge offers the item (the icons' menu through an exact-match,
+  loud patch of the composed `modules/index.js`, which reads `globalThis.__siteArticle` and does nothing without it; a
+  search result's and an open demo's menu drawn by the bridge), only once the page that frames the app has spoken, and
+  posts `{ demos: 'read', slug }` to that origin. The page (`web/sim-goto.js`) accepts it only from a visible Demos
+  frame's window, with the opaque or its own origin, and a slug of `[a-z0-9-]`. Unframed, and on iOS, nothing changes.
 - **The app's end is the site's code, not the app's** (`.site/tools/demos-web/bridge.js`). `tools/compose.ts` writes it
   inline into the head of the artifact's `index.html` and `shell.html` (its copy under `/demos/app/`, never the Demos
   app's sources or its own build), a classic script that runs before the app's modules. Installed only when framed

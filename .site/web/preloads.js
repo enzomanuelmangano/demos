@@ -5,8 +5,9 @@
    already fetched, offline too. Here that is every article's and every doc's body and the article cards (one module
    per page, tools/gen-content.ts): /demos and the home fetched 26 scripts they never run (Safari warns of each),
    about 107 KB at 4G, competing with what the page does need.
-   So a page keeps only its own: /articles/<slug> its article, /docs/<slug> its doc, /articles and /series/<s> the
-   cards. The chunks of the pages it links to are fetched once it has loaded and the main thread is idle, at low
+   So a page keeps only its own: /articles/<slug> its article, /docs/<slug> its doc, /demos/<slug> its demo post
+   (the chunks named demo-<slug>-<hash>.js, held by that name: no list of them in every head), /articles and
+   /series/<s> the cards. The chunks of the pages it links to are fetched once it has loaded and the main thread is idle, at low
    priority (requestIdleCallback; a timeout where there is none, Safari), so a tap or a click with no hover before it
    finds them fetched as Exact's own preload had them, but after the page's load instead of in it; a link the reader is
    about to follow (the pointer over it, its focus, a touch or press on it) fetches its chunk at once if it is not.
@@ -22,8 +23,13 @@
     var p = path.replace(/\/+$/, '') || '/', m;
     if (p === '/articles' || /^\/series\/[^/]+$/.test(p)) return [C.cards];
     if ((m = /^\/(articles|docs)\/([^/]+)$/.exec(p))) return [C[m[1]][m[2]]].filter(Boolean);
+    // A demo post's: the held chunk of its name (the slug, then Rolldown's 8-character hash).
+    if ((m = /^\/demos\/([^/]+)$/.exec(p))) { var s = 'demo-' + m[1] + '-'; return Object.keys(held).filter(function (f) { return f.indexOf(s) === 0 && f.length === s.length + 11; }); }
     return [];
   };
+  // The page's own demo post chunk is let through as it comes (`mine`: none is held yet when it does).
+  var isPost = /^demo-[a-z0-9-]+-[\w-]{8}\.js$/;
+  var mine = function (f) { var m = /^\/demos\/([^/]+)\/?$/.exec(location.pathname); return !!m && f.indexOf('demo-' + m[1] + '-') === 0 && f.length === m[1].length + 17; };
   var content = {};
   content[C.cards] = 1;
   for (var k in C.articles) content[C.articles[k]] = 1;
@@ -34,7 +40,8 @@
     var kept = [];
     for (var i = 0; i < arguments.length; i++) {
       var n = arguments[i];
-      if (n && n.tagName === 'LINK' && n.rel === 'modulepreload' && content[file(n.href)] && own.indexOf(file(n.href)) < 0) held[file(n.href)] = n.href;
+      var f = n && n.tagName === 'LINK' && n.rel === 'modulepreload' ? file(n.href) : '';
+      if (f && (content[f] && own.indexOf(f) < 0 || isPost.test(f) && !mine(f))) held[f] = n.href;
       else kept.push(n);
     }
     return append.apply(this, kept);
@@ -43,7 +50,7 @@
   // A path's held chunks as modulepreloads (once each): `low` for the idle warm, the browser's default for intent.
   var warmPath = function (path, low) {
     need(path).forEach(function (f) {
-      if (!f || warmed[f] || own.indexOf(f) >= 0) return;
+      if (!f || warmed[f] || own.indexOf(f) >= 0 || mine(f)) return;
       warmed[f] = 1;
       var l = document.createElement('link');
       l.rel = 'modulepreload';

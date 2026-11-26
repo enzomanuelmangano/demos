@@ -19,10 +19,10 @@ use Me, SiteConfig, Sent, SignInDialog, FeedbackDialog, ProfilePage, ManageSubsc
 routes nav
   home "/" render=build activate=idle
   demos "/demos" render=build activate=idle
-  // A demo post of the old site (decisions.md D21): the same /demos page under the post's URL and title, whose framed
-  // phone pages to that demo and opens it (web/sim-goto.js). Only the posts whose demo the app has are listed (the
-  // others are 307s to /demos, tools/compose.ts); every other path under /demos/ is the Demos app's mount or a 404.
-  demoPost "/demos/:demo" render=build activate=idle pages=demoPostSlugs()
+  // A demo post (decisions.md D25): the article, and from 1024 px /demos's phone beside it, which pages to that demo
+  // and opens it (web/sim-goto.js); a post whose demo the app has not is the article alone. Every other path under
+  // /demos/ is the Demos app's mount or a 404.
+  demoPost "/demos/:demo" render=build activate=interaction pages=demoPostSlugs()
   inspirations "/inspirations" render=build activate=interaction
   demosApp "/demos-app" render=build activate=interaction
   course "/course" render=build activate=interaction
@@ -41,11 +41,11 @@ routes nav
 
 // The footer's Terms | Privacy variant, on the reference's paths (components/Footer: /demos, /profile,
 // /manage-subscription, /privacy, /terms).
-// /demos and a demo post (D21) are one page.
 // /demos's description (D23): the same sentence as DEMOS_DESCRIPTION in tools/seo/site.ts.
 fn demosDescription(): string = "100+ animations built with Exact, Rust and WebGPU, running live in the browser."
-fn isDemos(name: string): bool = name == "demos" or name == "demoPost"
-fn legalFooter(name: string, post: string): bool = isDemos(name) or name == "profile" or name == "manageSubscription" or (name == "docPage" and (post == "terms" or post == "privacy"))
+// The Demos app's phone is on /demos and beside a demo post whose demo it has (D25).
+fn hasPhone(name: string, app: string): bool = name == "demos" or (name == "demoPost" and app != "")
+fn legalFooter(name: string, post: string): bool = name == "demos" or name == "profile" or name == "manageSubscription" or (name == "docPage" and (post == "terms" or post == "privacy"))
 fn titleCase(slug: string): string = slug.split("-").map(w => w.slice(0, 1).toUpperCase() + w.slice(1)).join(" ")
 fn docTitle(slug: string): string = slug == "terms" ? "Terms of Service" : slug == "privacy" ? "Privacy Policy" : slug == "license" ? "License" : slug
 
@@ -55,9 +55,6 @@ shape Subscribed
 shape Seeded
   seed: number
 
-shape DemoPost
-  title: string
-  app: string
 
 component App
   // The newsletter form's request (components/newsletter.contract): idle, loading, success or error.
@@ -172,16 +169,19 @@ component App
   resource stars = githubStars("enzomanuelmangano/demos", 3248, counted) as shape number
   // The content pages' data: one generated module per page (app.ts), none on the other routes.
   derive post = top(nav).name == "article" or top(nav).name == "docPage" ? top(nav).params.post : ""
+  derive demo = top(nav).name == "demoPost" ? top(nav).params.demo : ""
   derive seriesSlug = top(nav).name == "series" ? top(nav).params.series : ""
   resource article = loadArticle(top(nav).name == "article" ? post : "") as shape Page
+  resource demoPage = loadDemoPost(demo) as shape Page
   resource doc = loadDoc(top(nav).name == "docPage" ? post : "") as shape Page
-  // A demo post's title and the app's slug of its demo (D21); none elsewhere.
-  resource demoPost = loadDemoPost(top(nav).name == "demoPost" ? top(nav).params.demo : "") as shape DemoPost
+  // The app's slug of a demo post's demo (D25), '' elsewhere and for a post whose demo the app has not.
+  resource demoApp = loadDemoApp(demo) as shape string
   resource cards = loadCards(top(nav).name == "articles" ? "*" : seriesSlug) as shape Card[]
   // An in-app navigation to a content page draws it once its module has answered: until then a window-tall blank under
   // the header, not the newsletter and the footer at the top of an empty page that the content then pushes down (a
   // layout shift of 0.13 on every article opened from /articles; live swaps the page in when its data is there).
   derive held = ((top(nav).name == "article" and not current(article)) or (top(nav).name == "docPage" and not current(doc))
+    or (top(nav).name == "demoPost" and not current(demoPage))
     or ((top(nav).name == "articles" or top(nav).name == "series") and not current(cards)))
   // The code block just copied.
   state copied = ""
@@ -227,7 +227,7 @@ component App
     else
       keepFramed = false
       keepLive = false
-  task keep when not keepSim and isDemos(top(nav).name)
+  task keep when not keepSim and hasPhone(top(nav).name, demoApp)
     after(1, keepIt)
   action keepIt
     keepSim = true
@@ -281,7 +281,7 @@ component App
       // is as tall as the page, the document scrolling), the bars hanging from it (Contract positions are relative,
       // absolute or sticky). Its place in the flow is the reference's mb-20, in the entry below.
       view position="sticky" top=0 height=0 z-index=50
-        SiteHeader(current=(isDemos(top(nav).name) ? "demos" : top(nav).name), accounts=accounts, loading=meLoading, me=me, openSignIn=openSignIn,
+        SiteHeader(current=(top(nav).name == "demoPost" ? "demos" : top(nav).name), accounts=accounts, loading=meLoading, me=me, openSignIn=openSignIn,
           signOut=signOut, openProfile=openProfile)
         Toast(message=toast, tone=toastTone)
       SignInDialog(google=googleUrl, apple=appleUrl, googleFailed=failed(googleUrl), appleFailed=failed(appleUrl), retry=signInFailed)
@@ -299,7 +299,7 @@ component App
             // /demos: the spiral behind the page (SpiralBackdrop): the window's width, 500 px tall from 15 % of the
             // window's height above the page's top, at 70 %, drawn once with the page at a fixed angle: no fade-in, no
             // entrance turn, no random angle (live shows it 1.2 s in and turns it for 2.5 s; owner, 2026-11-24: it stuttered).
-            if isDemos(e.name)
+            if e.name == "demos"
               view position="absolute" left=0 top="-15vh" width="100%" height=500 z-index=-1 pointer-events="none"
                 canvas surface=spiral() aria-hidden=true width="100%" height="100%" opacity=0.7 data-motion="spiral"
             view height=80 flex-shrink=0
@@ -309,15 +309,10 @@ component App
                   image="/og/main.png" canonical="/"
                 Container()
                   HomePage(newsletterStatus=newsletterStatus, subscribe=subscribe)
-              else if isDemos(e.name)
-                if e.name == "demoPost"
-                  // The rest of the post's head (description, og, JSON-LD) is tools/seo/metadata.ts's, written at build.
-                  head title=`${demoPost.title} | Reactiive` description=demosDescription()
-                    image="/og/demos.png" canonical=`/demos/${e.params.demo}`
-                else
-                  head title="Demos | Reactiive" description=demosDescription()
-                    image="/og/demos.png" canonical="/demos"
-                DemosPage(launch=(e.name == "demoPost" and demoPost.app != "" ? `/demos/app/demo/${demoPost.app}` : "/demos/app/"),seed=time.seed, counted=counted, stars=stars, simReady=(simSettled and simNear and not wide),
+              else if e.name == "demos"
+                head title="Demos | Reactiive" description=demosDescription()
+                  image="/og/demos.png" canonical="/demos"
+                DemosPage(seed=time.seed, counted=counted, stars=stars, simReady=(simSettled and simNear and not wide),
                   simLive=simLive, simSeen=simSeen, simLoaded=simLoaded)
               else if e.name == "inspirations"
                 head title="Inspirations | Reactiive" description="The blogs, docs and creators whose work shaped Reactiive.io."
@@ -356,19 +351,24 @@ component App
               else if e.name == "docs"
                 head title="Reactiive" description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                   image="/og/main.png" canonical="/"
-              else if e.name == "article" or e.name == "docPage"
-                // One ArticlePage for both routes: the plan holds a component's tree once per call site, and the
+              else if e.name == "article" or e.name == "docPage" or e.name == "demoPost"
+                // One ArticlePage for the three routes: the plan holds a component's tree once per call site, and the
                 // article demos' trees are large (docs/progress-content.md).
                 if e.name == "article"
                   head title=`${article.title} | Reactiive` description=article.description image=`/content-assets/articles/${e.params.post}/images/header.webp`
                     canonical=`/articles/${e.params.post}`
+                else if e.name == "demoPost"
+                  // The rest of the post's head (keywords, og, JSON-LD) is tools/seo/metadata.ts's, written at build.
+                  head title=`${demoPage.title} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
+                    image=`/demos/og-image/${e.params.demo}` canonical=`/demos/${e.params.demo}`
                 else
                   head title=`${docTitle(e.params.post)} | Reactiive` description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"
                     image="/og/main.png" canonical=`/docs/${e.params.post}`
                 if held
                   view height="100vh"
                 else
-                  ArticlePage(page=(e.name == "article" ? article : doc), article=(e.name == "article"), copied=copied, copy=copyCode)
+                  ArticlePage(page=(e.name == "article" ? article : e.name == "demoPost" ? demoPage : doc), article=(e.name == "article"),
+                    side=(e.name == "demoPost" and demoApp != ""), copied=copied, copy=copyCode)
                     if e.name == "article"
                       Newsletter(showTitle=true, status=newsletterStatus, subscribe=subscribe)
               else
@@ -385,8 +385,9 @@ component App
       // The page's footer is drawn again after it (and the page's own hidden there, web/head.css): the focus order stays
       // the hero's pill, the phone, the footer.
       view position="absolute" left=0 top=0 width="clamp(0px, (100vw - 1023px) * 1000, 1px)" height=0 resize=widthSeen aria-hidden=true
-      if keepSim or isDemos(top(nav).name)
-        view position="absolute" top=0 left=0 right=0 height=0 data-motion=(isDemos(top(nav).name) ? "sim-keep-layer on" : "sim-keep-layer")
-          DemosSim(ready=(simSettled and keepNear and wide), live=keepLive, seen=keepSeen, loaded=keepLoaded, place="sim-keep")
+      if keepSim or hasPhone(top(nav).name, demoApp)
+        view position="absolute" top=0 left=0 right=0 height=0 data-motion=(top(nav).name == "demos" ? "sim-keep-layer on" : hasPhone(top(nav).name, demoApp) ? "sim-keep-layer post" : "sim-keep-layer")
+          DemosSim(ready=(simSettled and keepNear and wide), live=keepLive, seen=keepSeen, loaded=keepLoaded, place="sim-keep",
+            post=(top(nav).name == "demoPost"))
           view position="absolute" left=0 right=0 data-motion="sim-keep-footer"
             SiteFooter(legal=true)

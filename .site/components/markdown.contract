@@ -5,6 +5,7 @@
 // web/content.css, hooked by `data-motion` words (docs/decisions.md D11).
 use md, from from "./responsive.contract"
 use ArticleDemo from "./interactive/demo.contract"
+use PostMedia, PostPromo, PostSupport, PostFeedback from "./demo-post.contract"
 
 shape Run
   text: string
@@ -239,7 +240,11 @@ component Blocks
       view margin-left=(block.depth * 26)
         CodeBlock(block=block, copied=copied, copy=copy)
     else if block.kind == "heading"
-      if block.depth == 2
+      if block.depth == 1
+        // A second title inside a post (`# Name`, two demo posts): live's browser-default h1 under its prose reset.
+        h1 id=block.href margin-top=block.mt margin-bottom=block.mb font-size=20 line-height="28px" font-weight=600 letter-spacing="-0.01em" color="var(--color-text-heading)"
+          Runs(runs=block.runs, weight=600)
+      else if block.depth == 2
         h2 id=block.href margin-top=block.mt margin-bottom=block.mb margin-left=(block.lang == "0" ? 0 : 26) font-size=20 line-height="28px" font-weight=600 letter-spacing="-0.01em" color="var(--color-text-heading)"
           Runs(runs=block.runs, weight=600)
       else if block.depth == 3
@@ -275,7 +280,18 @@ component Blocks
     else if block.kind == "quote"
       text margin-bottom=block.mb font-size=18 line-height=1.6 background-color="var(--color-surface-elevated)" padding="23px 23px 8px" border-left="2px solid var(--color-hairline-strong)"
         Runs(runs=block.runs, weight=400)
+    // A demo post's parts (components/demo-post.contract).
+    else if block.kind == "media"
+      PostMedia(slug=block.lang, app=block.title, video=block.src, source=block.href, tags=block.text)
+    else if block.kind == "promo"
+      PostPromo()
+    else if block.kind == "support"
+      PostSupport()
+    else if block.kind == "feedback"
+      PostFeedback(title=block.text)
     else if block.kind == "tweet"
-      row justify-content="center" width="100%"
+      row justify-content="center" width="100%" position="relative"
         view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden"
+          // The post's own link, as live's markup has it (its widget's fallback): for crawlers and screen readers.
+          link href=block.href target="_blank" aria-label="View the post on X" position="absolute" width=1 height=1 overflow="hidden" clip-path="inset(50%)"
           iframe `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"

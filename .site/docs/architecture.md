@@ -11,7 +11,7 @@ edited. The new site is a second Exact app inside the **demos repo** (`enzomanue
 
 ## Amendments after the independent review (2026-11-23): these supersede the sections below
 
-1. **`/demos/<slug>` is not rebuilt.** The 126 demo posts become 308s into the Demos app: `/demos/<slug>` →
+1. **(Superseded by decisions.md D25: every `/demos/<slug>` is a page again.)** **`/demos/<slug>` is not rebuilt.** The 126 demo posts become 308s into the Demos app: `/demos/<slug>` →
    `/demos/demo/<slug>` for the 108 slugs the app has, `3d-scroll-transition` → `/demos/demo/scroll-transition-3d`
    (explicit alias), the other 17 (demos the Exact port does not have) → `/demos/`. List and aliases:
    `tools/demos-web/legacy-posts.ts`; written as edge routes by `tools/compose.ts`, which fails if an alias names a

@@ -7,8 +7,8 @@ const cdata = (v: string) => `<![CDATA[${v.replaceAll("]]>", "]]]]><![CDATA[>")}
 const entry = (loc: string, extra: string) => `<url>\n<loc>${loc}</loc>\n${extra}</url>`;
 const freq = (f: string, p: number) => `<changefreq>${f}</changefreq>\n<priority>${p}</priority>\n`;
 
-/** The reference listed /demos only; the demo posts are pages again (decisions.md D21), so they are listed too, after the
- *  articles, with their dates. /_dev/* is never listed. */
+/** The reference listed /demos only; the demo posts are listed too (decisions.md D25: nothing else links them all),
+ *  after the articles, with their dates. /_dev/* is never listed. */
 export function sitemapXml(): string {
   const urls = [
     entry(SITE_URL, freq('weekly', 1)),
