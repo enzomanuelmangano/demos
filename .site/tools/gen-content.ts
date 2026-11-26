@@ -642,7 +642,7 @@ function cardCover(kind: string, slug: string, rel: string, full: { url: string;
   if (!existsSync(out) || statSync(out).mtimeMs < statSync(file).mtimeMs) {
     const r = HAS_MAGICK
       ? spawnSync('magick', [file, '-resize', `${CARD_WIDTH}x>`, '-quality', '80', '-define', 'webp:method=6', out])
-      : spawnSync(process.execPath, [join(import.meta.dir, 'webp.ts'), file, out, String(CARD_WIDTH)]);
+      : spawnSync(process.execPath, [join(import.meta.dir, 'webp.ts'), file, out, String(CARD_WIDTH), '80']);
     if (r.status !== 0) throw new Error(`card cover failed on ${file}: ${r.stderr}`);
   }
   return { url: `${ASSET_URL}/${kind}/${slug}/${join(dirname(rel), name).replace(/^\.\//, '')}`, width: CARD_WIDTH, height: Math.round(full.height * CARD_WIDTH / full.width) };
