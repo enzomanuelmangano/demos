@@ -287,3 +287,27 @@ holds the finger 60 ms):
 
 Crispness of the framed app (the display's crop, 1440x900, Laplacian standard deviation): identical to main at DPR 2
 and 3 (the frame is main's; only the bridge's pointer answer changed).
+
+## 2026-11-26, the demo posts (D25)
+
+`bun tools/parity/perf.ts https://reactiive.io <local> /demos/<slug>... --runs 3`, medians; live / ours. The machine
+was shared with other builds, so single runs move by hundreds of ms on both sides: read the pairs, not the digits.
+
+| post | width, profile | LCP ms | TBT ms | transfer KB |
+|---|---|---|---|---|
+| chessboard (phone beside) | 1440 cable | 340 / 612 | 0 / 55 | 816 / 5,809 |
+| | 1440 4g | 1400 / 1012 | 300 / 227 | 1,072 / 3,300 |
+| | 390 cable | 932 / 612 | 0 / 0 | 816 / 511 |
+| | 390 4g | 1456 / 856 | 348 / 0 | 1,056 / 511 |
+| circular-carousel (phone beside) | 1440 cable | 516 / 404 | 0 / 75 | 892 / 8,343 |
+| | 1440 4g | 1112 / 824 | 208 / 271 | 892 / 3,265 |
+| | 390 cable | 372 / 376 | 0 / 0 | 892 / 566 |
+
+A calmer run of the build before the post switched to activation on intent: chessboard 1440 cable LCP 692 / 80, 4g
+640 / 672; circular-carousel 390 4g 744 / 856, TBT 193 / 212. A post without a demo (animated-count-text, first run,
+before the fixes below): LCP 604 / 372 (1440 cable), 900 / 672 (4g), transfer 928 / 473-586.
+
+- Desktop transfer with a phone is the Demos app itself (loaded after the page's load, in its own process): more than
+  live by design. Its start also adds the runtime's activation to the page's TBT (55-75 ms on cable, live 0).
+- Two things had become the largest paint, after the text, and no longer are: `/demos`'s still behind the frame (844 ms
+  at 4g; now a vector outline) and the video's box with its empty sides (784 ms; now the video's own shape).
