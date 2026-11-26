@@ -77,6 +77,20 @@ export const PATCHES: Patch[] = [
     ]],
   },
   {
+    // A size spring breaks apart in the desktop frame (Composable Text: the pill's middle drops ~3 px and a seam opens
+    // while it resizes). The app's web module makes the frame's `scale` read "none" through getComputedStyle, which only
+    // a transform drag needs (it unscales the drag's boxes with it), but it did so on every page. The host's layout
+    // transitions (presence-glue `measure`) then took the frame for unscaled and placed the stand-in that springs a
+    // box's size, and each move's start, in window pixels inside the scaled frame. Fix: the frame reads unscaled only
+    // while the page holds a transform drag handle. Checked by tools/parity/composable-text.ts.
+    file: /^index\.js$/,
+    dir: 'modules',
+    why: "layout transitions measure the scaled desktop frame as unscaled (a springing box comes apart)",
+    edits: [
+      ['    if (pseudo || !frames.has(el)) return cs;\n', '    if (pseudo || !boxes.size || !frames.has(el)) return cs;\n'],
+    ],
+  },
+  {
     // The framed phone's status bar and home indicator (home/web-phone.contract WebStatusBar, drawn in two inks): their
     // ink follows the open and close flight, by opacity in the flight's own keyframes, as the card covers the bar
     // (35-95 % of its width), instead of snapping at the route's change (the demo's ink at the tap's first frame, the
