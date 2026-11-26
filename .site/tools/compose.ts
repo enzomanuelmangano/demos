@@ -94,6 +94,7 @@ if (existsSync(pub)) for (const n of readdirSync(pub)) {
 // file of a page's images/ at /content-assets/<kind>/<slug>/images/…, so the originals are placed there. The pages load
 // the content pipeline's optimised variants (/assets/content/…).
 const content = join(site, '.content');
+if (existsSync(join(staticDir, 'content-assets'))) throw new Error("compose: the site build already has a content-assets/, which collides with live's image URLs");
 for (const kind of ['articles', 'docs', 'demos']) for (const slug of readdirSync(join(content, kind))) {
   const images = join(content, kind, slug, 'images');
   if (existsSync(images)) cpSync(images, join(staticDir, 'content-assets', kind, slug, 'images'), { recursive: true, filter: (p) => !basename(p).startsWith('.') });

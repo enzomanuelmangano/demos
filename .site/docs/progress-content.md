@@ -41,7 +41,7 @@ The converter works end to end (`tools/gen-content.ts`, authoring guide `docs/co
 (`.content/`), output generated and gitignored; strict (unknown tag, expression, raw HTML, `index.json` field: build
 error with file and line); `--watch` for authoring; head, JSON-LD, RSS and sitemap come from the same `index.json` files
 (`tools/seo/postbuild.ts`, branch `site`; one not-ported list in `tools/seo/site.ts`); share images at their live
-URLs through compose's `/content-assets/` rewrite. `bun run build` = convert, build, SEO postbuild. All ported pages build: 22 articles, 4 series,
+URLs at live's `/content-assets/` paths (compose places the originals, #139). `bun run build` = convert, build, SEO postbuild. All ported pages build: 22 articles, 4 series,
 `/articles`, `/docs` + 3 docs. Preview: `bun tools/serve.ts --port 4311` on the composed output.
 
 Parity, full page, share of differing pixels (`compare.ts`, live shot into `/tmp/content-live`, `CDP_PORT_OFFSET=100`):
