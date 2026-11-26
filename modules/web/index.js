@@ -124,12 +124,23 @@ const VOICE = {
 const GAIN = 0.2;
 let audio = null, muted = false, lastClick = -1e9, lastClickStrength = 0, idle = 0;
 const AudioContextClass = DOM ? (globalThis.AudioContext ?? globalThis.webkitAudioContext) : null;
+// Making the AudioContext costs tens of ms (80 ms on a 4x-throttled Chrome; the iPhone froze ~200 ms on the first key
+// typed in Cherry Blossom QR): never inside an input, nor while one is likely. It is made once the page has been
+// still for a while after load (idle, no input for 2 s); an input only resumes it, which is cheap. Made outside an
+// input it starts suspended (autoplay policy); the next trusted input resumes it. Until it exists, clicks are dropped.
+const resume = () => { try { if (audio && audio.state !== 'running') { const r = audio.resume(); if (r && r.catch) r.catch(() => {}); } } catch {} };
+const idleThen = globalThis.requestIdleCallback ? (f) => globalThis.requestIdleCallback(f) : (f) => setTimeout(f, 50);
+let lastInput = 0;
+const make = () => {
+  if (audio || muted || !AudioContextClass) return;
+  if (performance.now() - lastInput < 2000) { setTimeout(() => idleThen(make), 2000); return; }
+  try { audio = new AudioContextClass(); } catch {}
+};
+if (DOM && AudioContextClass) setTimeout(() => idleThen(make), 2000);
 const unlock = (e) => {
-  if (!e.isTrusted || muted || !AudioContextClass) return;
-  try {
-    audio ??= new AudioContextClass();
-    if (audio.state !== 'running') { const r = audio.resume(); if (r && r.catch) r.catch(() => {}); }
-  } catch {}
+  if (!e.isTrusted) return;
+  lastInput = performance.now();
+  if (!muted) resume();
 };
 if (DOM && AudioContextClass) for (const type of ['pointerup', 'touchend', 'keydown']) addEventListener(type, unlock, { capture: true, passive: true });
 const click = (ctx, at, v) => {
@@ -157,7 +168,8 @@ const sound = (kind) => {
   if (!audio || audio.state !== 'running') return true;
   try { for (const v of voice) click(audio, audio.currentTime, v); } catch {}
   clearTimeout(idle);
-  idle = setTimeout(() => { if (audio?.state === 'running') { const r = audio.suspend(); if (r && r.catch) r.catch(() => {}); } }, 3000);
+  // Suspended after 20 s quiet (battery), not 3 s: a pause between words must not cost a resume at the next key.
+  idle = setTimeout(() => { if (audio?.state === 'running') { const r = audio.suspend(); if (r && r.catch) r.catch(() => {}); } }, 20000);
   return true;
 };
 // The runtime's own vibrate(ms) (Contract's `haptic()`, host/web-js/commands.js) as the nearest kind.
