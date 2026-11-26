@@ -301,8 +301,12 @@
       arrAnims.push(last = svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, delay: 3200, easing: 'ease-out', fill: 'forwards' }));
     } else {
       // The gap is longer than the stroke and the hidden offset 2 px past it, so no round cap shows before its stroke
-      // draws (a `len len` dash leaves a dot at the tip from the first frame).
-      var hide = function (el, n) { el.style.strokeDasharray = n + ' ' + (n + 4); return [{ strokeDashoffset: n + 2 }, { strokeDashoffset: 0 }]; };
+      // draws (a `len len` dash leaves dots at the tip's ends from the first frame). Opacity 0 until then as well, for
+      // engines that paint a cap outside the path.
+      var hide = function (el, n) {
+        el.style.strokeDasharray = n + ' ' + (n + 4);
+        return [{ strokeDashoffset: n + 2, opacity: 0 }, { opacity: 1, offset: 0.02 }, { strokeDashoffset: 0, opacity: 1 }];
+      };
       arrAnims.push(path.animate(hide(path, len), { duration: DRAW, easing: 'cubic-bezier(.6,0,.2,1)', fill: 'both' }));
       heads.forEach(function (h, i) {
         arrAnims.push(h.animate(hide(h, hl), { duration: 200, delay: DRAW - 30 + i * 50, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'both' }));
