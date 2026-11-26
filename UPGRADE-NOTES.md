@@ -1,3 +1,31 @@
+# Upgrade to Exact d885904c (2026-11-26), from 98ed61fb
+
+930 upstream commits (main at d885904c, "The web's safe-area rounds solve as the kernel's and measure at rest (#1888)").
+`exact.mjs` and `.site/exact.mjs` name the new checkout (`~/.exact/exact2/d885904c...`, a plain clone + `bun install`);
+`bun exact.mjs update` changed nothing else; `bun exact.mjs lock` moved taffy 0.14.0 -> 0.16.0 (path) and rustc-hash.
+
+## What broke, and the fixes
+
+- **Demos app**: one Contract error. Alert Drawer transitioned `border-radius`, which Exact now refuses (a layout
+  property; `-exact-layout-transition` animates the frame). The corner now takes its value at once; the shadow keeps
+  the spring. Everything else builds with 0 errors.
+- **Site (`.site/`)**: the compiler now checks every value an attribute can take, dead branches with constant props
+  included ("translate none", an animation named `Bar`), and `translate` no longer takes `clamp()`/`vw`. MorphSquare
+  takes its transitions and animations whole; the bottom sheet's pre-measure position is a margin.
+- **Exact bug, worked around**: the web build boots the view at build time without a `CSS` global, and
+  `host/web-js/modes.js` calls `CSS.escape` unguarded ("boot refused while building the view: ReferenceError: CSS is
+  not defined"). `.site/app.ts` defines a stand-in only where `CSS` is missing. To report upstream.
+- **Site patches to the Demos web artifact** (`.site/tools/demos-web/patches.ts`): two are fixed upstream and gone
+  (exit ghosts of adjacent siblings; the height spring that snapped), checked by `tools/parity/composable-text.ts` and
+  `height-spring.ts` passing without them. The other five still apply.
+
+## Checked (site composed with the new demos artifact, served locally)
+
+head parity with live 173/173; links 689/689 + 389 legacy; sim-history, sim-read, sim-goto, mouse-scroll pass;
+sim-statusbar 4 of 5 runs (the first, right after the server started, saw one ink jump); composable-text and
+height-spring pass; the three articles with interactive boxes 0.02-0.08 % pixels against live. Not checked: the iOS
+app (no native build or device run in this upgrade).
+
 # Upgrade to Exact 98ed61fb (2026-11-23), from 2180d806
 
 360 upstream commits (1,419 files). The app is on `98ed61fb2a7d618ce90af2c40f349bb9ea91c706` (upstream `main`), a new detached
