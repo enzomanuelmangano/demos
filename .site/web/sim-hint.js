@@ -16,7 +16,8 @@
     if (typeof d !== 'number' || d === 0 || !nav.currentEntry) return false;
     var e = nav.entries()[nav.currentEntry.index + d];
     if (!e) return false;
-    nav.traverseTo(e.key).finished.catch(function () {});
+    var t = nav.traverseTo(e.key), no = function () {};
+    t.committed.catch(no); t.finished.catch(no);
     return true;
   };
   history.go = function (d) { if (!to(d)) return go.apply(history, arguments); };

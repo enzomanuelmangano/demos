@@ -143,12 +143,25 @@ const launcher = (page: Page) => until(async () => (await appPath(page)).replace
   check(await go('/articles', 'Introducing Refined'), '7 / → /articles');
   check(await go('/demos', '100+ animations'), '7 → /demos');
   await live(page); await Bun.sleep(1500);
+  const h1 = await hist(page);
   await tapApp(page, 'icon-calendar-days');
   check(await until(async () => (await appPath(page)).includes('/demo/calendar-days'), 8000), '7 a demo opened by hand');
+  await Bun.sleep(400);
+  const h2 = await hist(page);
+  check(h2.index === h1.index + 1, `7 its entry is in the joint history (@${h1.index} → @${h2.index})`);
   await Bun.sleep(800);
   check(await go('/', "Hey, I'm Enzo"), `7 the header's Home lands on / with its page (${await page.eval('location.pathname')})`);
   check(await go('/articles', 'Introducing Refined'), `7 then Articles lands on /articles with its page (${await page.eval('location.pathname')})`);
   check(await go('/demos', '100+ animations'), `7 then Demos lands on /demos (${await page.eval('location.pathname')})`);
+  // The browser's Back and Forward still move one page at a time, the page and the address together.
+  const was = await page.eval<string>('location.pathname');
+  await back(page);
+  const b = await until(() => page.eval(`location.pathname !== '${was}'`), 6000);
+  await Bun.sleep(600);
+  const atBack = await page.eval<string>('location.pathname');
+  await forward(page);
+  const f = await until(() => page.eval(`location.pathname === '${was}' && (document.querySelector('main')?.innerText ?? '').includes('100+ animations')`), 6000);
+  check(b && f, `7 Back (${atBack}) and Forward (${await page.eval('location.pathname')}) move one page, address and page together`);
   await page.close();
 }
 kill();
