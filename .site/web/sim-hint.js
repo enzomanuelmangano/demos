@@ -3,6 +3,26 @@
    visible }`: current = the page is on /demos, visible = the frame is on screen; sent when a frame loads, at every
    route change (the Navigation API's navigate, at once, before the route's own work; popstate) and every change of
    the frame's visibility (IntersectionObserver) or the tab's. */
+/* The page's history moves count the page's own entries (owner's bug, 2026-11-26: "often the page does not even
+   update"). The site's router goes to a route already in its stack by traversal (`history.go(-n)`, n from its own
+   entries), but the history is joint: a demo the reader opened in the framed app added the frame's entry after the
+   page's, so go(-2) from /demos to / landed on /articles, and the router's corrections chained (the address and the
+   page apart). With the Navigation API, whose entries are the page's alone, the page's go(n) and back() are a
+   traverseTo of the page's entry n away, whatever the frame added; without it, the browser's own. */
+(function () {
+  var nav = window.navigation, go = history.go, back = history.back;
+  if (!nav || !nav.entries) return;
+  var to = function (d) {
+    if (typeof d !== 'number' || d === 0 || !nav.currentEntry) return false;
+    var e = nav.entries()[nav.currentEntry.index + d];
+    if (!e) return false;
+    var t = nav.traverseTo(e.key), no = function () {};
+    t.committed.catch(no); t.finished.catch(no);
+    return true;
+  };
+  history.go = function (d) { if (!to(d)) return go.apply(history, arguments); };
+  history.back = function () { if (!to(-1)) return back.apply(history, arguments); };
+})();
 (function () {
   // A demo post (/demos/<slug>, D21) is the /demos page too.
   var onDemos = function (path) { return /^\/demos(\/(?!app(\/|$))[a-z0-9-]+)?\/?$/.test(path); };
