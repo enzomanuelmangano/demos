@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Links and redirects of the composed site, served (tools/serve.ts or a preview): every internal URL the site's built
 // pages, sitemap.xml, rss.xml and manifest.json name answers 200 (redirects followed), and the legacy URLs answer as
-// docs/decisions.md D25 says. The Demos app's own files under /demos/app/ are its build's, not crawled.
+// docs/decisions.md D25 says. Every image URL live serves under /content-assets/ answers 200 under its old name. The Demos app's own files under /demos/app/ are its build's, not crawled.
 //   bun tools/parity/links.ts <origin> [--out .vercel/output]      (exit 1 on any failure)
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
@@ -36,6 +36,16 @@ for (const f of files.filter((f) => f.endsWith('.html'))) {
 }
 for (const f of ['sitemap.xml', 'rss.xml']) for (const m of readFileSync(join(root, f), 'utf8').matchAll(/<(?:loc|link)>([^<]+)<\/(?:loc|link)>/g)) add(m[1], '/');
 for (const icon of JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8')).icons ?? []) add(icon.src, '/');
+// Live's image URLs, whether or not a page here names them: live serves every file of a page's images/ (the imported
+// reference's, .content/) under /content-assets/, and image search holds those URLs.
+const content = resolve(import.meta.dir, '../../.content');
+const images = ['articles', 'docs', 'demos'].flatMap((kind) => readdirSync(join(content, kind)).flatMap((slug) => {
+  const d = join(content, kind, slug, 'images');
+  return existsSync(d) ? walk(d).map((f) => `/content-assets/${relative(content, f)}`) : [];
+}));
+if (!images.length) fail('no images under .content/: the /content-assets/ check has nothing to check');
+for (const u of images) add(u, '/');
+console.log(`links: ${images.length} /content-assets/ image URLs of live's`);
 let ok = 0;
 const list = [...urls].sort();
 for (let k = 0; k < list.length; k += 16) await Promise.all(list.slice(k, k + 16).map(async (u) => {

@@ -166,9 +166,7 @@ function imageSize(file: string): { width: number; height: number } {
 }
 
 const MAX_WIDTH = 1440;
-// `original`: the file is also kept under its own name (an article's featured image: its live URL,
-// /content-assets/…, is routed to assets/content/… by tools/compose.ts and named by og:image and JSON-LD).
-function asset(kind: string, slug: string, rel: string, original = false): { url: string; width: number; height: number } {
+function asset(kind: string, slug: string, rel: string): { url: string; width: number; height: number } {
   const file = join(SRC, kind, slug, rel);
   if (!existsSync(file)) throw new Error(`${kind}/${slug}: image ${rel} does not exist`);
   const { width, height } = imageSize(file);
@@ -178,7 +176,7 @@ function asset(kind: string, slug: string, rel: string, original = false): { url
   let name = basename(rel);
   const target = () => join(outDir, name);
   if ((ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp') && (width > MAX_WIDTH || ext === '.png')) {
-    // A resized WebP gets its own name, so the original keeps its file (a featured image's is og:image's).
+    // A resized WebP gets its own name: it never passes for the original.
     const webp = basename(rel, extname(rel)) + (ext === '.webp' ? `-${MAX_WIDTH}w.webp` : `${ext.replace('.', '-')}.webp`);
     const out = join(outDir, webp);
     if (!existsSync(out) || statSync(out).mtimeMs < statSync(file).mtimeMs) {
@@ -188,8 +186,6 @@ function asset(kind: string, slug: string, rel: string, original = false): { url
     if (statSync(out).size < statSync(file).size) name = webp;
     else rmSync(out);
   }
-  const own = join(outDir, basename(rel));
-  if (original && name !== basename(rel) && (!existsSync(own) || statSync(own).size !== statSync(file).size)) copyFileSync(file, own);
   if (name === basename(rel) && (!existsSync(target()) || statSync(target()).size !== statSync(file).size)) copyFileSync(file, target());
   return { url: `${ASSET_URL}/${kind}/${slug}/${join(dirname(rel), name).replace(/^\.\//, '')}`, width, height };
 }
@@ -619,7 +615,7 @@ for (const slug of readdirSync(join(SRC, 'articles')).sort()) {
   const meta = JSON.parse(readFileSync(join(SRC, 'articles', slug, 'index.json'), 'utf8'));
   checkMeta(slug, meta);
   const blocks = await convert({ kind: 'articles', slug, file: join(SRC, 'articles', slug, 'index.mdx') }, meta);
-  const cover = asset('articles', slug, String(meta.featuredImage).replace(/^\.\//, ''), true);
+  const cover = asset('articles', slug, String(meta.featuredImage).replace(/^\.\//, ''));
   const page = { slug, title: meta.title, description: meta.subtitle, image: cover.url, date: meta.date, tags: meta.tags ?? [], blocks };
   writeFileSync(join(OUT, 'articles', `${slug}.ts`), `export default ${JSON.stringify(page)};\n`);
   articles.push({ slug, title: meta.shortTitle ?? meta.title, description: meta.subtitle, value: shortDate(meta.date), date: meta.date, href: `/articles/${slug}`, series: meta.series ?? '', cover: cover.url, coverWidth: cover.width, coverHeight: cover.height });
