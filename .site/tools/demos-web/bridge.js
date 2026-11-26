@@ -195,6 +195,36 @@
     const readable = (slug) => !!siteOrigin && ARTICLES.has(slug);
     const read = (slug) => { if (readable(slug)) window.parent.postMessage({ demos: 'read', slug }, siteOrigin); };
     window.__siteArticle = { has: readable, read };
+    // The Inspiration sheet (the app's WebSheet, home/web-chrome.contract) of an open demo with an article gets
+    // "Read article" under its own action, in the sheet's look (a dark pill where the action is white). Pressing it
+    // dismisses the sheet as its scrim would and goes to the post. Added to the sheet's panel once it is drawn; the
+    // panel is the app's and leaves with the sheet, taking the button with it.
+    const SHEET_READ = 'web-sheet-read';
+    const sheetRead = () => {
+      const sheet = document.querySelector('[data-testid="web-sheet"]'), slug = openSlug();
+      if (!sheet || !slug || !readable(slug) || sheet.querySelector(`[data-testid="${SHEET_READ}"]`)) return;
+      const action = sheet.querySelector('[data-testid="web-sheet-action"]');
+      const panel = action ? action.parentElement : [...sheet.children].find((c) => c.tagName !== 'BUTTON');
+      if (!panel) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.testid = SHEET_READ;
+      b.setAttribute('aria-label', 'Read article');
+      b.style.cssText = 'all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;height:52px;flex-shrink:0;border-radius:26px;background:rgba(255,255,255,.14);color:#fff;font:600 17px/1 -apple-system,system-ui,sans-serif;cursor:pointer;transition:transform .12s ease,background-color .12s ease;-webkit-tap-highlight-color:transparent';
+      b.innerHTML = '<span>Read article</span><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5.2C8.4 4 6.2 3.6 3.2 3.8V15.4C6.2 15.2 8.4 15.6 10 16.8C11.6 15.6 13.8 15.2 16.8 15.4V3.8C13.8 3.6 11.6 4 10 5.2ZM10 5.2V16.6"/></svg>';
+      const down = () => { b.style.transform = 'scale(.97)'; b.style.backgroundColor = 'rgba(255,255,255,.2)'; };
+      const up = () => { b.style.transform = ''; b.style.backgroundColor = 'rgba(255,255,255,.14)'; };
+      b.addEventListener('pointerdown', down);
+      for (const t of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(t, up);
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const scrim = sheet.querySelector('button[aria-label="Dismiss"]');
+        if (scrim) pressEl(scrim);
+        read(slug);
+      });
+      if (action) action.after(b); else panel.append(b);
+    };
+    new MutationObserver(() => { if (siteOrigin) sheetRead(); }).observe(document.documentElement, { childList: true, subtree: true });
     let menu = null, hold = null, pointer = 'mouse';
     const closeMenu = () => {
       const m = menu; menu = null;
