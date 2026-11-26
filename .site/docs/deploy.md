@@ -1,4 +1,35 @@
-# Deploying reactiive.io (prepared, not run)
+# Deploying reactiive.io
+
+**Vercel builds it** (owner, 2026-11-26: "manage everything with Vercel"). The Vercel project imports the GitHub repo
+with Root Directory `.site`; `.site/vercel.json` sets the rest: install (bun 1.4.2, the site's lockfile), build
+(`tools/vercel-build.ts`: the Demos app's web artifact from the build cache or built with Rust, the site, compose into
+`.vercel/output`, which Vercel serves as is: Build Output API v3), and an ignore step that skips a commit touching only
+`.legacy/`, `.parity/`, `.github/` or Markdown. Every push makes a preview; `main` makes production. A site-only change
+reuses the cached artifact (a few minutes); a change to the demos rebuilds it (Rust to wasm: the first build is long).
+
+## One-time setup (owner)
+
+1. vercel.com → Add New → Project → import `enzomanuelmangano/demos`, **in the team of the old reactiive.io project**.
+   - Root Directory: `.site` (keep "Include files outside the root directory" on: the demos build reads the repo root).
+   - Application Preset: Other. Build, Output and Install: leave empty (`.site/vercel.json` sets them).
+   - Environment Variables (values from the old project's settings; all public):
+     `SITE_ACCOUNTS=1`, `EXPO_PUBLIC_ACCESS_KEY`, `EXPO_PUBLIC_AMPLITUDE_API_KEY`, `EXPO_PUBLIC_SENTRY_DSN`, and
+     `LEGACY_API_ORIGIN` = the old project's own `*.vercel.app` URL (never `reactiive.io`: the old Next deployment keeps
+     answering `/api/*` through a rewrite until those routes are ported). A production build without
+     `SITE_ACCOUNTS=1` and `LEGACY_API_ORIGIN` is refused (readers would lose their session).
+   - Deploy. The first build compiles the Demos app (Rust); later ones reuse it while the demos do not change.
+2. Check the deployment's URL by hand: `/`, `/demos` (the phone), an article, a demo post, `/sitemap.xml`, Sign In.
+3. **The cutover**: the new project → Settings → Domains: add `reactiive.io` and `www.reactiive.io` (Vercel moves them
+   from the old project; same team: no DNS change). Resubmit the sitemap in Search Console (126 new demo posts).
+4. Keep the old project (its pages, purchase routes and `/api/*`) for at least a month: the API and the rollback.
+
+Rollback: the new project → Deployments → an earlier one → "Promote to production", or move the domains back to the
+old project.
+
+`.github/workflows/site-deploy.yml` (manual, `vercel deploy --prebuilt` from Actions) stays as an alternative path;
+it is not needed with the Git integration.
+
+## The Actions path (alternative, prepared before the Vercel build existed)
 
 Nothing here has been run: no Vercel project, secret, deployment or DNS change exists. The workflow
 `.github/workflows/site-deploy.yml` is `workflow_dispatch` only and refuses to start without its three secrets.

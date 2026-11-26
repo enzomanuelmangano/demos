@@ -166,6 +166,7 @@ function imageSize(file: string): { width: number; height: number } {
 }
 
 const MAX_WIDTH = 1440;
+const HAS_MAGICK = spawnSync('magick', ['-version']).status === 0;
 function asset(kind: string, slug: string, rel: string): { url: string; width: number; height: number } {
   const file = join(SRC, kind, slug, rel);
   if (!existsSync(file)) throw new Error(`${kind}/${slug}: image ${rel} does not exist`);
@@ -180,8 +181,11 @@ function asset(kind: string, slug: string, rel: string): { url: string; width: n
     const webp = basename(rel, extname(rel)) + (ext === '.webp' ? `-${MAX_WIDTH}w.webp` : `${ext.replace('.', '-')}.webp`);
     const out = join(outDir, webp);
     if (!existsSync(out) || statSync(out).mtimeMs < statSync(file).mtimeMs) {
-      const r = spawnSync('magick', [file, '-resize', `${MAX_WIDTH}x>`, '-quality', '82', '-define', 'webp:method=6', out]);
-      if (r.status !== 0) throw new Error(`magick failed on ${file}: ${r.stderr}`);
+      // ImageMagick where the machine has it; else sharp (tools/webp.ts: Vercel's build image has no ImageMagick).
+      const r = HAS_MAGICK
+        ? spawnSync('magick', [file, '-resize', `${MAX_WIDTH}x>`, '-quality', '82', '-define', 'webp:method=6', out])
+        : spawnSync('bun', [join(import.meta.dir, 'webp.ts'), file, out, String(MAX_WIDTH)]);
+      if (r.status !== 0) throw new Error(`${HAS_MAGICK ? 'magick' : 'sharp'} failed on ${file}: ${r.stderr}`);
     }
     if (statSync(out).size < statSync(file).size) name = webp;
     else rmSync(out);

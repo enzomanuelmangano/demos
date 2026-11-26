@@ -22,10 +22,11 @@
     "mathjax-full": "3",
     "prism-react-renderer": "2",
     "prismjs": "1",
+    "qrcode-generator": "1.4.4",
     "remark-gfm": "4",
     "remark-mdx": "3",
     "remark-parse": "11",
-    "qrcode-generator": "1.4.4",
+    "sharp": "0.34.4",
     "typescript": "5.9.3",
     "unified": "11"
   }
