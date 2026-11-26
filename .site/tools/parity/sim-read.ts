@@ -12,6 +12,8 @@
 // 5. No article, no item: a demo the app has without a post (its icon's menu), and the app unframed (/demos/app/).
 // 6. Touch (a 820 px tablet): a long press on an icon, and on a search result, offers it; a tap goes to the post.
 // 7. Only the framed app is heard: the page's own message goes nowhere.
+// 8. The Inspiration sheet of an open demo with a post: "Read article" once, after the sheet's action; re-opened during
+//    the sheet's exit it is there at once; a press dismisses the sheet and goes to the post, the demo open.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { launch, newPage, type Page } from './cdp.ts';
@@ -199,6 +201,43 @@ for (const how of ['icon', 'search'] as const) {
   await live(page); await Bun.sleep(600);
   await page.eval(`postMessage({ demos: 'read', slug: '${A.app}' }, '*')`); await Bun.sleep(1200);
   check((await path(page)) === '/demos', `7 a message that is not the framed app's goes nowhere (${await path(page)})`);
+  await page.close();
+}
+// ---- 8
+{
+  const page = await open(1440, '/demos');
+  await live(page); await ready(); await Bun.sleep(600);
+  const LIVE = `[...document.querySelector('[data-testid=web-sheet]')?.children ?? []].filter((c) => !c.hasAttribute('data-exiting'))`;
+  const PANEL = `${LIVE}.find((c) => c.tagName !== 'BUTTON')`;
+  let D: { slug: string; app: string } | null = null;
+  for (const d of first) {
+    await mouse(page, (await point(page, icon(d.app)))!);
+    if (!(await until(async () => (await appPath()) === `/demos/app/demo/${d.app}`, 8000))) continue;
+    await Bun.sleep(900);
+    if (await (await app()).eval<boolean>(`!!document.querySelector('[data-testid=inspiration]')`)) { D = d; break; }
+    await mouse(page, (await point(page, `document.querySelector('[data-testid=close]')`))!);
+    await until(async () => (await appPath()) === '/demos/app', 8000); await Bun.sleep(600);
+  }
+  if (!D) check(false, '8 no demo with a post and an Inspiration sheet on the first page');
+  else {
+    const openSheet = async () => { await mouse(page, (await point(page, `document.querySelector('[data-testid=inspiration]')`))!); };
+    const kids = () => app().then((a) => a.eval<string[]>(`(${PANEL})?.children ? [...(${PANEL}).children].map((c) => c.dataset?.testid || c.tagName) : []`));
+    await openSheet();
+    const there = await until(async () => (await kids()).includes('web-sheet-read'), 3000);
+    const k = await kids();
+    check(there && k.filter((x) => x === 'web-sheet-read').length === 1 && k.indexOf('web-sheet-read') === k.length - 1 && (!k.includes('web-sheet-action') || k.indexOf('web-sheet-action') < k.indexOf('web-sheet-read')), `8 ${D.app}'s sheet: "Read article" once, after the action (${k.join(' ')})`);
+    await Bun.sleep(500); await shot(page, 'sheet');
+    // Dismissed by its scrim, re-opened during the exit.
+    await (await app()).eval(`(${LIVE}).find((c) => c.matches('button[aria-label="Dismiss"]')).click()`);
+    await Bun.sleep(40);
+    await (await app()).eval(`document.querySelector('[data-testid=inspiration]').click()`);
+    await Bun.sleep(150);
+    check((await kids()).includes('web-sheet-read'), `8 re-opened during the exit: the button at once (${(await kids()).join(' ')})`);
+    await Bun.sleep(600);
+    await mouse(page, (await point(page, `(${PANEL}).querySelector('[data-testid=web-sheet-read]')`))!);
+    check(await until(async () => (await path(page)) === `/demos/${D!.slug}`, 8000), `8 a press goes to /demos/${D.slug} (${await path(page)})`);
+    check(await until(async () => (await (await app()).eval<number>(`${LIVE}.length`)) === 0, 3000) && (await appPath()) === `/demos/app/demo/${D.app}`, `8 the sheet dismissed, the demo open (${await appPath()})`);
+  }
   await page.close();
 }
 kill();

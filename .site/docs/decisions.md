@@ -849,7 +849,9 @@ inlined by `tools/compose.ts`; the icons' menu gets the item by an exact-match p
 press there belongs to the demo) get a menu drawn by the bridge with the same look. The app posts
 `{ demos: 'read', slug }` to the page's origin; `web/sim-goto.js` hears only a visible Demos frame and clicks a link, so
 the router navigates in place (one entry, the article's top, Back returns). A demo the reader opened is left open.
-Checked by `tools/parity/sim-read.ts`. All 109 demos of the app have a post today; one without would show no item.
+The Inspiration sheet of an open demo with a post gets "Read article" too, under its own action
+(owner, 2026-11-26): drawn by the bridge into the app's live sheet panel, a dark pill in the sheet's look; it dismisses the
+sheet and goes to the post (`tools/parity/sim-read.ts` 8). Checked by `tools/parity/sim-read.ts`. All 109 demos of the app have a post today; one without would show no item.
 
 ## D26. No new subscriptions: sponsor on GitHub; a subscriber can only see the plan and cancel it (owner, 2026-11-26)
 
