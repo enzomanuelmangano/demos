@@ -158,7 +158,9 @@ component Demos
   derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired, tile=false, web=page.platform == "web", keyboardHeight=(page.platform == "web" ? host.keyboardHeight : 0))
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
-  resource feedback = feedbackNotes() when atlasShown as shape FeedbackNote[] else empty()
+  // The Mac's loopback feedback store (the atlas, a developer's tool): never asked on the web, where a typed
+  // /demos/app/atlas would have every visitor's browser ask 127.0.0.1.
+  resource feedback = feedbackNotes() when atlasShown and not web as shape FeedbackNote[] else empty()
   mutation noted as shape FeedbackNote refreshes feedback
   // The web is never the Mac's atlas window: a desktop browser gets an iPhone Air in a frame (`framed`).
   derive web = page.platform == "web"
@@ -219,7 +221,7 @@ component Demos
     send noted = feedbackEdit(slug, id, comment, status)
   mutation snapped as shape SnapAck
   // 1200: home/atlas.contract idleMs() (a timer takes a literal).
-  task snapping when top(nav).name == "snap" key=top(nav).id
+  task snapping when top(nav).name == "snap" and not web key=top(nav).id
     after(1200, snapNow)
   action snapNow
     if top(nav).name == "snap"
