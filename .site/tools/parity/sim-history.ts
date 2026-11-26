@@ -10,6 +10,8 @@
 //    one entry (the page told the app it is on /demos again), and the next Back reaches the page before: no dead entry.
 // 6. On a tablet (820x1180) a reader opens a demo, scrolls the frame off screen, presses Back: the demo closes by
 //    going back one entry (an off-screen frame draws nothing, yet the page is on /demos), and the next Back leaves.
+// 7. A demo the reader opened on /demos, then the header's Home and Articles: each lands on its page, the address and the
+//    page together (the router goes to a route in its stack by go(-n); the frame's entry must not shift it).
 import { launch, newPage, type Page } from './cdp.ts';
 
 const origin = (process.argv[2] ?? 'http://127.0.0.1:4318').replace(/\/$/, '');
@@ -128,6 +130,27 @@ const launcher = (page: Page) => until(async () => (await appPath(page)).replace
   await page.close();
 }
 
+// 7. A demo open, then the header's links (the router's go(-n) over the frame's entry).
+{
+  const page = await newPage(cdp, 1440);
+  await page.goto(`${origin}/`); await Bun.sleep(1500);
+  const go = async (href: string, text: string) => {
+    const l = await link(page, href); await click(page, l.x, l.y);
+    const ok = await until(() => page.eval(`location.pathname === '${href}' && (document.querySelector('main')?.innerText ?? '').includes(${JSON.stringify(text)})`), 8000);
+    await Bun.sleep(400);
+    return ok && (await page.eval(`location.pathname`)) === href;
+  };
+  check(await go('/articles', 'Introducing Refined'), '7 / → /articles');
+  check(await go('/demos', '100+ animations'), '7 → /demos');
+  await live(page); await Bun.sleep(1500);
+  await tapApp(page, 'icon-calendar-days');
+  check(await until(async () => (await appPath(page)).includes('/demo/calendar-days'), 8000), '7 a demo opened by hand');
+  await Bun.sleep(800);
+  check(await go('/', "Hey, I'm Enzo"), `7 the header's Home lands on / with its page (${await page.eval('location.pathname')})`);
+  check(await go('/articles', 'Introducing Refined'), `7 then Articles lands on /articles with its page (${await page.eval('location.pathname')})`);
+  check(await go('/demos', '100+ animations'), `7 then Demos lands on /demos (${await page.eval('location.pathname')})`);
+  await page.close();
+}
 kill();
 if (fails.length) { console.error(`sim-history: ${fails.length} failure(s)`); process.exit(1); }
 console.log('sim-history: the app and the page keep one history');
