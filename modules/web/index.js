@@ -88,7 +88,9 @@ const HAPTIC = {
   selection: 5, tick: 5, 'impact-light': 8, grab: 8, 'impact-soft': 8, release: 8, 'impact-medium': 12, impact: 12,
   'impact-rigid': 12, limit: 12, 'impact-heavy': 18, success: [8, 70, 14], warning: [14, 90, 8], error: [12, 50, 12, 80, 16],
 };
-const vibrate = typeof navigator.vibrate === 'function' ? navigator.vibrate.bind(navigator) : null;
+// A motor only where the API has one behind it: desktop Chrome has `navigator.vibrate` and no motor (it answers true
+// and nothing moves), so the API alone is no motor; Android's browsers drive the phone's.
+const vibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function' && /Android/i.test(navigator.userAgent ?? '') ? navigator.vibrate.bind(navigator) : null;
 // A stronger buzz within the 150 ms still plays (it cuts the weaker one short): a press's selection tick then the
 // action's own feedback (dot-sheet's send: selection, then success) keeps the second, as the iPhone plays both.
 let lastBuzz = -1e9, lastStrength = 0;
@@ -99,13 +101,83 @@ const paced = (pattern) => {
   lastBuzz = now; lastStrength = k;
   return vibrate(pattern);
 };
+// ---- Where there is no motor (a desktop, iOS Safari): the feedback as a click (owner, 2026-11-26) ----
+// Each kind is a few milliseconds of white noise with an exponential decay through a bandpass (the tempo site's
+// instrument): the filter's centre is the click's size, a few per cent of jitter per play keeps the tenth tick from
+// being a recording of the first. Nothing to download or decode: it starts in the same turn as the touch. Quiet
+// (GAIN), paced as the buzz is. The AudioContext is made and resumed only inside a real input in this window (a
+// trusted pointerup, touchend or keydown: what every browser, WebKit included, lets audio start from), never by a
+// click itself: a click while the context is not running is dropped, not queued (queued, they all played at once
+// when it started). Idle for 3 s, it is suspended (the audio device closes); the next input resumes it. The page
+// that frames the app may mute it (`{ demos: 'sound', on }` from window.parent).
+const VOICE = {
+  selection: [{ hz: 4200, ms: 3, q: 7, gain: 0.45 }], tick: [{ hz: 4200, ms: 3, q: 7, gain: 0.45 }],
+  'impact-light': [{ hz: 2600, ms: 4, q: 6, gain: 0.6 }], grab: [{ hz: 2600, ms: 4, q: 6, gain: 0.6 }],
+  'impact-soft': [{ hz: 1800, ms: 6, q: 3, gain: 0.55 }], release: [{ hz: 2400, ms: 4, q: 6, gain: 0.5 }],
+  'impact-medium': [{ hz: 1700, ms: 5, q: 6, gain: 0.75 }], impact: [{ hz: 1700, ms: 5, q: 6, gain: 0.75 }],
+  'impact-rigid': [{ hz: 3200, ms: 3, q: 10, gain: 0.8 }], limit: [{ hz: 1500, ms: 5, q: 8, gain: 0.7 }],
+  'impact-heavy': [{ hz: 900, ms: 8, q: 5, gain: 0.95 }],
+  success: [{ hz: 1700, ms: 5, q: 6, gain: 0.6 }, { hz: 2900, ms: 4, q: 7, gain: 0.7, at: 0.075 }],
+  warning: [{ hz: 2600, ms: 4, q: 6, gain: 0.65 }, { hz: 1400, ms: 6, q: 6, gain: 0.7, at: 0.1 }],
+  error: [{ hz: 1500, ms: 5, q: 6, gain: 0.7 }, { hz: 1500, ms: 5, q: 6, gain: 0.7, at: 0.06 }, { hz: 1000, ms: 8, q: 5, gain: 0.85, at: 0.15 }],
+};
+const GAIN = 0.2;
+let audio = null, muted = false, lastClick = -1e9, lastClickStrength = 0, idle = 0;
+const AudioContextClass = DOM ? (globalThis.AudioContext ?? globalThis.webkitAudioContext) : null;
+const unlock = (e) => {
+  if (!e.isTrusted || muted || !AudioContextClass) return;
+  try {
+    audio ??= new AudioContextClass();
+    if (audio.state !== 'running') { const r = audio.resume(); if (r && r.catch) r.catch(() => {}); }
+  } catch {}
+};
+if (DOM && AudioContextClass) for (const type of ['pointerup', 'touchend', 'keydown']) addEventListener(type, unlock, { capture: true, passive: true });
+const click = (ctx, at, v) => {
+  const length = Math.max(1, Math.round(ctx.sampleRate * v.ms / 1000)), decay = length / 5;
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate), data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / decay);
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = v.hz * (1 + (Math.random() - 0.5) * 0.08);
+  band.Q.value = v.q;
+  const gain = ctx.createGain();
+  gain.gain.value = v.gain * GAIN;
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(band).connect(gain).connect(ctx.destination);
+  source.onended = () => { source.disconnect(); band.disconnect(); gain.disconnect(); };
+  source.start(at + (v.at ?? 0));
+};
+const sound = (kind) => {
+  const voice = VOICE[kind];
+  if (!voice || muted || !AudioContextClass) return !!voice;
+  const now = performance.now(), k = voice.reduce((a, v) => a + v.gain, 0);
+  if (now - lastClick < 150 && k <= lastClickStrength) return true;
+  lastClick = now; lastClickStrength = k;
+  if (!audio || audio.state !== 'running') return true;
+  try { for (const v of voice) click(audio, audio.currentTime, v); } catch {}
+  clearTimeout(idle);
+  idle = setTimeout(() => { if (audio?.state === 'running') { const r = audio.suspend(); if (r && r.catch) r.catch(() => {}); } }, 3000);
+  return true;
+};
+// The runtime's own vibrate(ms) (Contract's `haptic()`, host/web-js/commands.js) as the nearest kind.
+// A long pattern (the checkmate's crescendo) is a motor's piece, not a notification: nothing to hear.
+const kindOf = (pattern) => {
+  if (Array.isArray(pattern)) return pattern.length > 5 ? null : pattern.length >= 5 ? 'error' : pattern[0] >= 12 ? 'warning' : 'success';
+  const ms = Number(pattern) || 0;
+  return ms <= 5 ? 'selection' : ms <= 8 ? 'impact-light' : ms <= 12 ? 'impact-medium' : 'impact-heavy';
+};
 const haptics = {
-  play(kind) { const pattern = HAPTIC[kind]; if (pattern !== undefined && vibrate) paced(pattern); return pattern !== undefined; },
+  play(kind) { const pattern = HAPTIC[kind]; if (pattern === undefined) return false; if (vibrate) paced(pattern); else sound(kind); return true; },
 };
 if (vibrate) {
   // A stop (0) and a long pattern (the checkmate's crescendo) pass as they are.
   navigator.vibrate = (pattern) => (pattern === 0 || (Array.isArray(pattern) && pattern.length > 5) ? vibrate(pattern) : paced(pattern));
+} else if (DOM && typeof navigator !== 'undefined') {
+  // No motor: the runtime's vibrate is heard instead. A stop (0) is nothing to hear.
+  try { Object.defineProperty(navigator, 'vibrate', { configurable: true, writable: true, value: (pattern) => { const kind = pattern === 0 || pattern === undefined ? null : kindOf(pattern); return kind ? sound(kind) : true; } }); } catch {}
 }
+if (DOM) addEventListener('message', (e) => { if (e.source === window.parent && e.data?.demos === 'sound' && typeof e.data.on === 'boolean') muted = !e.data.on; });
 let messageTries = 0;
 const hookMessages = () => {
   const ex = globalThis.exact;

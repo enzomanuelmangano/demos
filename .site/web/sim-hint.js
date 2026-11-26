@@ -30,9 +30,69 @@
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
     for (var i = 0; i < es.length; i++) { shown.set(es[i].target, es[i].isIntersecting); tell(es[i].target); }
   }) : null;
+  // The app's haptics are heard where the device has no motor (modules/web/index.js): on by default, quietly; the
+  // reader mutes them with the switch beside the phone (as an iPhone's ring/silent switch), kept for this site.
+  var SOUND = 'reactiive.demos.sound';
+  var soundOn = function () { try { return localStorage.getItem(SOUND) !== 'off'; } catch (e) { return true; } };
   function tell(f) {
     if (!f.contentWindow || !/\/demos\/app\//.test(f.src)) return;
     f.contentWindow.postMessage({ demos: 'page', current: current, visible: !document.hidden && shown.get(f) !== false && f.checkVisibility() }, '*');
+    f.contentWindow.postMessage({ demos: 'sound', on: soundOn() }, '*');
+    switchFor(f);
+  }
+  // The switch: a small round button left of the phone's bezel, a third of the way down (where the iPhone's switch
+  // is), shown once the frame is (it fades in with it). Placed from the frame's box and the phone's geometry
+  // (web/head.css sim-frame: the display min(420, (h - 48) * .448718) wide, centred), again on every resize.
+  var switches = new WeakMap();
+  var ICON_ON = '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none"/>';
+  var ICON_OFF = '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6" fill="none"/>';
+  // A toggle with one name: pressed is muted.
+  function paint(b) {
+    var on = soundOn();
+    b.setAttribute('aria-pressed', on ? 'false' : 'true');
+    b.setAttribute('aria-label', 'Mute haptic sounds');
+    b.title = on ? 'Haptic sounds on' : 'Haptic sounds off';
+    b.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (on ? ICON_ON : ICON_OFF) + '</svg>';
+  }
+  var soundButtons = [];
+  if (!document.getElementById('sim-sound-style')) {
+    var st = document.createElement('style');
+    st.id = 'sim-sound-style';
+    st.textContent = '[data-motion~=sim-sound]:hover{background:rgb(255 255 255 / .12) !important}[data-motion~=sim-sound]:focus-visible{outline:2px solid rgb(255 255 255 / .8);outline-offset:2px}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+  addEventListener('storage', function (e) { if (e.key === SOUND) { soundButtons.forEach(paint); var fs = frames(); for (var i = 0; i < fs.length; i++) tell(fs[i]); } });
+  function switchFor(f) {
+    var box = f.parentElement;
+    if (switches.has(f) || !box || !(box.getAttribute('data-motion') || '').match(/sim-phone/)) return;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('data-motion', 'sim-sound');
+    b.style.cssText = 'position:absolute;z-index:2;width:34px;height:34px;margin:0;padding:0;display:flex;align-items:center;justify-content:center;border-radius:17px;border:1px solid rgb(255 255 255 / .12);background:rgb(255 255 255 / .06);color:rgb(255 255 255 / .72);cursor:pointer;opacity:0;pointer-events:none;transition:opacity 300ms ease-out,background-color 150ms ease;-webkit-tap-highlight-color:transparent';
+    paint(b);
+    b.addEventListener('click', function () {
+      var on = !soundOn();
+      try { localStorage.setItem(SOUND, on ? 'on' : 'off'); } catch (e) {}
+      soundButtons.forEach(paint);
+      var fs = frames();
+      for (var i = 0; i < fs.length; i++) if (fs[i].contentWindow) fs[i].contentWindow.postMessage({ demos: 'sound', on: on }, '*');
+    });
+    box.appendChild(b);
+    switches.set(f, b);
+    soundButtons.push(b);
+    var place = function () {
+      var fh = f.offsetHeight, fw = f.offsetWidth, sw = Math.min(420, (fh - 48) * 0.448718), sh = Math.min(912, (fh - 48) * 0.974359);
+      var left = f.offsetLeft + (fw - sw) / 2 - sw * 0.04 - 34 - 14, top = f.offsetTop + (fh - sh) / 2 + sh * 0.22;
+      var showing = fw > 0 && left >= 0 && (f.hasAttribute('data-ready') || /(^|\s)live(\s|$)/.test(f.getAttribute('data-motion') || ''));
+      b.style.left = left + 'px'; b.style.top = top + 'px';
+      b.style.opacity = showing ? '1' : '0'; b.style.pointerEvents = showing ? 'auto' : 'none';
+      // Hidden, it is out of the tab order and the accessibility tree too.
+      b.style.visibility = showing ? 'visible' : 'hidden';
+      b.style.transition = 'opacity 300ms ease-out,background-color 150ms ease' + (showing ? '' : ',visibility 0s linear 300ms');
+    };
+    place();
+    if ('ResizeObserver' in window) new ResizeObserver(place).observe(f);
+    new MutationObserver(place).observe(f, { attributes: true, attributeFilter: ['data-ready', 'data-motion'] });
   }
   function frames() { return document.querySelectorAll('iframe[title="Demos"]'); }
   function all() { var fs = frames(); for (var i = 0; i < fs.length; i++) adopt(fs[i]); }
