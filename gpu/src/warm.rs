@@ -20,21 +20,37 @@ use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 
 /// The warm size, in points: a phone's, at one pixel per point so a frame costs a ninth of the screen's.
-#[cfg(not(target_arch = "wasm32"))]
 const WIDTH: f32 = 390.0;
-#[cfg(not(target_arch = "wasm32"))]
 const HEIGHT: f32 = 844.0;
+/// The web's pace: one surface per this many milliseconds of the warm canvas's frames.
+#[cfg(target_arch = "wasm32")]
+const WEB_PAUSE_MS: f64 = 120.0;
 /// The pause after each surface, so the main thread and the render server are never starved.
 #[cfg(not(target_arch = "wasm32"))]
 const PAUSE: Duration = Duration::from_millis(60);
 
 /// The surface: draws nothing; its first frame starts the warm-up.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(Warm { started: false })
+    Box::new(Warm { started: false, #[cfg(target_arch = "wasm32")] web: Web::default() })
 }
 
 struct Warm {
     started: bool,
+    #[cfg(target_arch = "wasm32")]
+    web: Web,
+}
+
+/// The web's warm-up: the browser's device is not `Send`, so there is no thread; the warm canvas asks for
+/// frames instead and builds one surface per [`WEB_PAUSE_MS`] on the main thread, recorded, never submitted.
+/// Safari compiles a pipeline's Metal shaders the first time it meets them (a cold Sculptures froze the page
+/// 6 s on an iPhone 17 on its first open) and keeps them in the system's shader cache: built here, on the
+/// home, the demo's own pipelines find them there.
+#[cfg(target_arch = "wasm32")]
+#[derive(Default)]
+struct Web {
+    done: Vec<&'static str>,
+    last_ms: Option<f64>,
+    finished: bool,
 }
 
 impl Surface for Warm {
@@ -44,18 +60,26 @@ impl Surface for Warm {
 
     fn render(
         &mut self,
-        _: &Frame,
+        _frame: &Frame,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         _: &mut wgpu::CommandEncoder,
         _: &wgpu::TextureView,
         _: wgpu::TextureFormat,
     ) -> bool {
-        if !self.started {
-            self.started = true;
-            start(device.clone(), queue.clone());
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = &self.started;
+            return self.web.step(_frame.now_ms, device, queue);
         }
-        false
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if !self.started {
+                self.started = true;
+                start(device.clone(), queue.clone());
+            }
+            false
+        }
     }
 }
 
@@ -63,6 +87,12 @@ impl Surface for Warm {
 static STARTED: AtomicBool = AtomicBool::new(false);
 /// The demos to warm before the rest, most recent first.
 static FRONT: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
+
+/// Whether surface `name` belongs to the demo keyed `key` (`a_b`, or `a_b_part`).
+#[cfg(target_arch = "wasm32")]
+fn belongs(name: &str, key: &str) -> bool {
+    name == key || name.strip_prefix(key).is_some_and(|rest| rest.starts_with('_'))
+}
 
 /// Moves the surfaces of the demo `slug` (`a-b`) to the front of the warm-up.
 pub fn prioritize(slug: &str) {
@@ -126,12 +156,33 @@ fn run(device: &wgpu::Device, queue: &wgpu::Queue) {
     }
 }
 
-/// The browser's device is not `Send` and compiles shaders itself: no warm-up there.
 #[cfg(target_arch = "wasm32")]
-fn start(_: wgpu::Device, _: wgpu::Queue) {}
+impl Web {
+    /// One step of the web's warm-up at `now_ms`: whether the warm canvas wants another frame.
+    fn step(&mut self, now_ms: f64, device: &wgpu::Device, queue: &wgpu::Queue) -> bool {
+        if self.finished {
+            return false;
+        }
+        if self.last_ms.is_some_and(|last| now_ms - last < WEB_PAUSE_MS) {
+            return true;
+        }
+        self.last_ms = Some(now_ms);
+        let surfaces = crate::REGISTRY.surfaces;
+        let front = FRONT.lock().unwrap_or_else(|e| e.into_inner()).front().cloned();
+        let next = front
+            .and_then(|key| surfaces.iter().map(|s| s.0).find(|n| !self.done.contains(n) && *n != "warm" && belongs(n, &key)))
+            .or_else(|| surfaces.iter().map(|s| s.0).find(|n| !self.done.contains(n) && *n != "warm" && *n != "timer"));
+        let Some(name) = next else {
+            self.finished = true;
+            return false;
+        };
+        self.done.push(name);
+        warm(name, device, queue);
+        true
+    }
+}
 
 /// One frame of surface `name`, drawn offscreen at the size and format a canvas would have.
-#[cfg(not(target_arch = "wasm32"))]
 pub fn warm(name: &str, device: &wgpu::Device, queue: &wgpu::Queue) {
     let Some(&(_, arity, factory)) = crate::REGISTRY.surfaces.iter().find(|s| s.0 == name) else { return };
     let mut surface = factory();
@@ -184,6 +235,10 @@ pub fn warm(name: &str, device: &wgpu::Device, queue: &wgpu::Queue) {
     // of rapid Calendar Days opens). Queue writes made here ride the main thread's next submit.
     drop(encoder.finish());
     surface.submitted();
+    // The web cannot block on the pop: dropping the guard pops the scope, its error (if any) discarded.
+    #[cfg(target_arch = "wasm32")]
+    drop(scope);
+    #[cfg(not(target_arch = "wasm32"))]
     let _ = exact_gpu::block_on(scope.pop());
 }
 
