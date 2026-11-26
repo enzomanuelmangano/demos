@@ -296,4 +296,8 @@ component Blocks
         view width="100%" max-width=550 margin-top=block.mt margin-bottom=block.mb overflow="hidden"
           // The post's own link, as live's markup has it (its widget's fallback): for crawlers and screen readers.
           link href=block.href target="_blank" aria-label="View the post on X" position="absolute" width=1 height=1 overflow="hidden" clip-path="inset(50%)"
+          // color-scheme light (CSS normal: what live's widget iframe has): the page's `light dark` inherited here differs from the embed
+          // document's, so the browser painted an opaque white backdrop behind it (white at the card's rounded corners,
+          // and wider in Safari). Matching, the iframe stays transparent.
           iframe `https://platform.twitter.com/embed/Tweet.html?id=${block.text}&theme=dark&hideThread=true` title="X post" width="100%" height=from(598, block.width, block.height) border-width=0 display="block"
+            color-scheme="light"
