@@ -84,6 +84,12 @@ const exact = exactAt(seedOf(join(ROOT, 'exact.mjs')));
 // The root Cargo.toml names the vendored crates under .exact/checkout; setup reads it, so the link comes first.
 mkdirSync(join(ROOT, '.exact'), { recursive: true });
 run(`ln -sfn ${exact} ${join(ROOT, '.exact/checkout')}`);
+// Vercel's image (Amazon Linux 2023) lacks the system libraries Chrome needs, and the web build starts Chrome on Linux
+// to read the native modules' factory roster (tools/demos-web/build.ts). dnf, as the build's root.
+if (env.VERCEL && spawnSync('bash', ['-c', 'command -v dnf'], { env }).status === 0) {
+  step('Chrome\'s system libraries (dnf)');
+  run('dnf install -y -q nss nspr atk at-spi2-atk at-spi2-core cups-libs libdrm libxkbcommon libXcomposite libXdamage libXrandr libXfixes libXext libX11 libxcb mesa-libgbm pango cairo alsa-lib expat dbus-libs libxshmfence 2>&1 | tail -3 || true');
+}
 step('exact setup --platform web');
 run(`bun ${exact}/scripts/exact.mjs setup --platform web`, { cwd: ROOT });
 

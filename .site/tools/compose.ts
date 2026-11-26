@@ -148,7 +148,7 @@ const routes: Route[] = [];
 routes.push({ src: `^${esc(MOUNT)}$`, status: 308, headers: { Location: BASE } });
 routes.push({ src: `^/((?!${esc(MOUNT.slice(1))}/).+)/$`, status: 308, headers: { Location: '/$1' } });
 // A demo post's share image keeps live's URL (its head names it; live's own answers 404): the /demos card (D25).
-routes.push({ src: `^/demos/og-image/(?:${LEGACY_DEMO_POSTS.map(esc).join('|')})$`, dest: '/og/demos.png' });
+for (const src of alternations('^/demos/og-image/', LEGACY_DEMO_POSTS.map(esc), '$')) routes.push({ src, dest: '/og/demos.png' });
 // Signed out (no accounts' API), /profile and /manage-subscription are 200 as live's, and send the visitor to /demos
 // in the page, as live's did (D25). With the API behind /api/* (LEGACY_API_ORIGIN) they are the site's pages
 // (components/account), which send a signed-out reader there.
@@ -158,12 +158,25 @@ if (process.env.LEGACY_API_ORIGIN) routes.push({ src: '^/api/(.*)$', dest: `${pr
 // its own, off the page's main thread; decisions.md D12): its scripts, wasm and fonts are then CORS fetches. Public,
 // static and credential-free, so any origin may read them.
 routes.push({ src: `^${esc(BASE)}.*$`, headers: { 'Access-Control-Allow-Origin': '*' }, continue: true });
+// Vercel refuses a route whose `src` is longer than 4096 characters ("Builder returned invalid routes"): an
+// alternation of many names is split into as many routes as it takes, each under the limit.
+function alternations(head: string, items: string[], tail: string, max = 3800) {
+  const out: string[] = [];
+  let cur: string[] = [];
+  const src = (xs: string[]) => `${head}(?:${xs.join('|')})${tail}`;
+  for (const x of items) {
+    if (cur.length && src([...cur, x]).length > max) { out.push(src(cur)); cur = []; }
+    cur.push(x);
+  }
+  if (cur.length) out.push(src(cur));
+  return out;
+}
 // Content-named files may be cached for good (routes.json `files`).
 for (const [base, r] of [['/', siteRoutes], [BASE, demosRoutes]] as const) {
   // A patched file's content no longer matches the hash in its name (tools/demos-web/patches.ts): it is revalidated
   // like any unnamed file, never cached for good, so a fix to the patch reaches every reader.
   const names = Object.values(r.files as Record<string, string>).filter((n) => n !== 'app.plan' && !(base === BASE && patched.some((p) => p.file === n)));
-  if (names.length) routes.push({ src: `^${esc(base)}(?:${names.map(esc).join('|')})$`, headers: immutable, continue: true });
+  for (const src of alternations(`^${esc(base)}`, names.map(esc), '$')) routes.push({ src, headers: immutable, continue: true });
 }
 // The site's fonts: their URLs carry a content hash (?v=, tools/head.ts), so they may be cached for good.
 routes.push({ src: '^/assets/fonts/.*$', headers: immutable, continue: true });
@@ -182,5 +195,6 @@ for (const page of builtPages.sort()) if (page !== '/') routes.push({ src: `^${e
 for (const r of siteRoutes.routes) if (!r.notfound && r.render === 'client') routes.push({ src: patternRe('/', r.pattern), dest: '/shell.html' });
 routes.push({ src: '^/.*$', dest: existsSync(join(siteDist, '404.html')) ? '/404.html' : '/shell.html', status: 404 });
 
+for (const r of routes) if ('src' in r && typeof r.src === 'string' && r.src.length > 4096) throw new Error(`compose: a route of ${r.src.length} characters (Vercel refuses over 4096): ${r.src.slice(0, 80)}`);
 writeFileSync(join(out, 'config.json'), JSON.stringify({ version: 3, routes }, null, 2) + '\n');
 console.log(`compose: ${out}: site ${builtPages.length} pages, demos at ${BASE} (${demosDist}), ${routes.length} routes`);
