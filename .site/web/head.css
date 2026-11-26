@@ -80,7 +80,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 @media (min-width:768px){
 :root{--fh:clamp(320px,100vh - 87px,1080px)}
 [data-motion~=sim-frame]{--sh:min(912px,(var(--fh) - 48px) * .974359);--sw:min(420px,(var(--fh) - 48px) * .448718);clip-path:inset(calc((var(--fh) - var(--sh)) / 2) calc((600px - var(--sw)) / 2));overscroll-behavior:contain;opacity:0;transition:opacity 300ms ease-out}
-[data-motion~=sim-frame][data-motion~=live]{opacity:1}
+[data-motion~=sim-frame][data-motion~=live],[data-motion~=sim-frame][data-ready]{opacity:1}
 }
 /* /demos 768-1023 px: the frame's stage fades into the page at its sides (12 %) and within 24 px of its top and bottom.
    Painted over the frame in the page's colour, never as masks on its ancestors: a mask over an out-of-process frame

@@ -37,7 +37,7 @@
   function frames() { return document.querySelectorAll('iframe[title="Demos"]'); }
   function all() { var fs = frames(); for (var i = 0; i < fs.length; i++) adopt(fs[i]); }
   function adopt(f) {
-    if (!seen.has(f)) { seen.add(f); f.addEventListener('load', function () { tell(f); }); if (io) io.observe(f); }
+    if (!seen.has(f)) { seen.add(f); f.addEventListener('load', function () { f.removeAttribute('data-ready'); tell(f); }); if (io) io.observe(f); }
     tell(f);
   }
   var shownPath = location.pathname;
@@ -51,6 +51,14 @@
   addEventListener('popstate', function () { at(location.pathname); });
   addEventListener('pageshow', function () { at(location.pathname); });
   document.addEventListener('visibilitychange', all);
+  // The app says when its launcher answers input (`{ demos: 'ready' }`, tools/demos-web/bridge.js): the frame shows at
+  // once (web/head.css `[data-ready]`), not on the page's fallback timer (the frame's load + 800 ms), so the phone a
+  // reader sees is the one that answers. A new document in the frame (its load) clears it.
+  addEventListener('message', function (e) {
+    if (!e.data || e.data.demos !== 'ready') return;
+    var fs = frames();
+    for (var i = 0; i < fs.length; i++) if (fs[i].contentWindow === e.source) fs[i].setAttribute('data-ready', '');
+  });
   // A route drawn or a frame added: derive `current` from the address again. Without the Navigation API (Safari before
   // 26, older Firefox) an in-app link away from /demos fires no popstate; the route's own DOM change catches it.
   // (With the API the navigate events keep it; the address may lag a navigate under way, so it is not read here.)
@@ -118,7 +126,7 @@
     if (state !== 'idle') return;
     if (!onDemos() || !wide.matches) return;
     if (++tries > 120) return; // 30 s on this visit of /demos
-    var f = Array.prototype.find.call(document.querySelectorAll('iframe[data-motion~=live]'), function (f) {
+    var f = Array.prototype.find.call(document.querySelectorAll('iframe[data-motion~=live],iframe[data-ready]'), function (f) {
       var r = f.getBoundingClientRect(); return r.width > 0 && r.top < innerHeight && r.bottom > 0 && f.checkVisibility();
     });
     if (!f) { timer = setTimeout(wait, 250); return; }

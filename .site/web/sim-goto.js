@@ -32,7 +32,7 @@
   var want = null, sent = '', running = false, timer = 0, tries = 0, target = null;
   function frames() { return Array.prototype.filter.call(document.querySelectorAll('iframe[title="Demos"]'), function (f) { return /\/demos\/app\//.test(f.src); }); }
   function shown() {
-    return frames().find(function (f) { var r = f.getBoundingClientRect(); return f.matches('[data-motion~=live]') && r.width > 0 && r.top < innerHeight && r.bottom > 0 && f.checkVisibility(); }) || null;
+    return frames().find(function (f) { var r = f.getBoundingClientRect(); return f.matches('[data-motion~=live],[data-ready]') && r.width > 0 && r.top < innerHeight && r.bottom > 0 && f.checkVisibility(); }) || null;
   }
   function say(f, m) { try { f.contentWindow.postMessage(m, '*'); } catch (e) {} }
   function stop(close) {

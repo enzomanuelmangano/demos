@@ -105,6 +105,16 @@
       if (el) pressEl(el);
     });
     for (const type of ['pointerdown', 'wheel', 'keydown']) addEventListener(type, (e) => { if (e.isTrusted) { pressUntil = 0; post({ demos: 'input' }); } }, { capture: true, passive: true });
+    // Ready: the launcher's pager is driven (it answers input), told to the page at once (web/sim-hint.js shows the
+    // frame then, not on its timer). To the origin that serves this app (the page is the same deployment).
+    {
+      const t0 = performance.now();
+      const look = () => {
+        if (document.querySelector('[data-testid="pager-track"]')?.style.willChange === 'transform') { try { window.parent.postMessage({ demos: 'ready' }, HOME); } catch {} return; }
+        if (performance.now() - t0 < 60000) setTimeout(look, 40);
+      };
+      look();
+    }
 
     // ---- A deep link (.site/docs/decisions.md D21): `{ demos: 'goto', slug, still }` ----
     // reactiive.io/demos/<slug> is /demos whose phone goes to that demo as a reader would: the launcher pages to the

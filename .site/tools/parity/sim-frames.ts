@@ -59,7 +59,7 @@ async function run() {
   await page.goto(`${origin}${mode === 'site' ? '/demos' : '/demos/app/'}`);
   if (mode === 'site') {
     // Wait for the frame to be live (the page marks it `live` once the app has drawn).
-    for (let i = 0; i < 150; i++) { if (await page.eval(`!!document.querySelector('iframe[data-motion~=live]')`)) break; await Bun.sleep(200); }
+    for (let i = 0; i < 150; i++) { if (await page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')`)) break; await Bun.sleep(200); }
     if (phone) { await page.eval(`(() => { const f = document.querySelector('iframe[src*="/demos/app/"]'); scrollTo(0, f.getBoundingClientRect().top + scrollY - 73); })()`); }
   }
   const app = await frameOf(page);

@@ -31,7 +31,7 @@ async function open(): Promise<App> {
   // No arrow: this session turned it off.
   await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `try{sessionStorage.setItem('reactiive.demos.hint','1');sessionStorage.setItem('reactiive.demos.arrow','off')}catch(e){}` });
   await page.goto(`${origin}/demos`);
-  await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live]')?.checkVisibility()`));
+  await until(() => page.eval(`!!document.querySelector('iframe[data-motion~=live], iframe[data-ready]')?.checkVisibility()`));
   const { targetInfos } = await cdp.send('Target.getTargets');
   const t = targetInfos.filter((t: any) => t.type === 'iframe' && t.url.includes('/demos/app/')).pop();
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId: t.targetId, flatten: true });
@@ -42,7 +42,7 @@ async function open(): Promise<App> {
   };
   await until(() => ev(`document.querySelector('[data-testid="pager-track"]')?.style.willChange === 'transform'`));
   await Bun.sleep(600);
-  const off = await page.eval<any>(`(() => { const r = document.querySelector('iframe[data-motion~=live]').getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
+  const off = await page.eval<any>(`(() => { const r = document.querySelector('iframe[data-motion~=live], iframe[data-ready]').getBoundingClientRect(); return { x: r.x, y: r.y }; })()`);
   // A click that reached any listener past the capture phase (a drag's click is dropped in the capture phase).
   await ev(`window.__clicks = 0; addEventListener('click', () => __clicks++)`);
   return { page, ev, off, sessionId };
@@ -152,7 +152,7 @@ const traceStop = async (a: App) => { await a.ev(`window.__tracing = false`); re
 
 // ---- 5: a demo's list ----
 async function openDemo(a: App, slug: string) {
-  await a.page.eval(`document.querySelector('iframe[data-motion~=live]').contentWindow.postMessage({ demos: 'goto', slug: '${slug}', still: true }, '*')`);
+  await a.page.eval(`document.querySelector('iframe[data-motion~=live], iframe[data-ready]').contentWindow.postMessage({ demos: 'goto', slug: '${slug}', still: true }, '*')`);
   const ok = await until(() => a.ev(`location.pathname.endsWith('/demo/${slug}')`), 15000);
   await Bun.sleep(1500);
   return ok;

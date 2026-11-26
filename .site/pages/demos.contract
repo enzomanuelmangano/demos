@@ -237,9 +237,9 @@ component DemosLaunch
 // never downloads it), under the frame and blind to the pointer. From 768 px the frame is clipped to the app's display
 // (web/head.css sim-frame: a clip path also clips hit testing), so the wheel and the touches over the bezel, the keys,
 // the stage and the margins are the page's, and only the screen's go to the app; the still draws the bezel around
-// it, and the frame fades in over the still once it has loaded and drawn (`live`).
-// The frame's page loads (`ready`, App) once its box is within a viewport's height of the window and the page has
-// run 600 ms (D18), whichever is later. The fades are
+// it, and the frame fades in over the still once the app says its launcher answers (web/sim-hint.js `data-ready`),
+// or once it has loaded and drawn (`live`, the fallback). The frame's page loads (`ready`, App) once its box is within
+// a viewport's height of the window and the page has run 200 ms (D18), whichever is later. The fades are
 // web/head.css's (sim-sides): a gradient stop cannot step at a width in Contract.
 component DemosSim
   props
