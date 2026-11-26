@@ -35,7 +35,7 @@ routes nav
   // Signed in only (components/account): the shell, drawn on the reader's page. Without the env the host sends it
   // to /demos (tools/compose.ts), as the reference did for a signed-out visitor.
   profile "/profile" render=client
-  // A subscription's status and its cancel (no plans, no prices: docs/stubs.md); signed in only, as /profile.
+  // A subscription's status and its cancel (no plans, no prices: docs/stubs.md); a subscriber's only (D26).
   manageSubscription "/manage-subscription" render=client
   notfound render=build
 
@@ -105,6 +105,11 @@ component App
     toast = "You don't have access to this page"
     toastTone = "info"
     toasts = toasts + 1
+  // /manage-subscription is a subscriber's (decisions.md D26): once the user is known to have no plan, /profile.
+  task leaveManage when top(nav).name == "manageSubscription" and tokenInUrl == "" and not meLoading and me.signedIn and not me.hasPlan
+    after(1, toProfile)
+  action toProfile
+    nav = replace(nav, path("profile"))
   // The sign-in dialog: its provider links are asked the first time it opens.
   state signInArmed = false
   // Sign In opens the dialog on every build, as live (the owner); the provider links are asked of /api/* (the old
@@ -289,7 +294,7 @@ component App
       // builds and adopts their nodes (final sweep: every page's runtime start pays for each node).
       if accounts and me.signedIn
         FeedbackDialog(sending=feedbackSending, send=sendFeedback)
-        CancelDialog(expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
+        CancelDialog(status=me.planStatus, expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
       for e in stack(nav).slice(-1) key=e.id
         column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
           scroll document id=`page-${e.id}` flex=1 min-height=0
@@ -342,11 +347,11 @@ component App
                 head title="Profile | Reactiive" robots="noindex, nofollow" canonical="/profile"
                 Container()
                   if accounts and me.signedIn
-                    ProfilePage(me=me, openFeedback=openFeedback, signOut=signOut)
+                    ProfilePage(me=me, loading=meLoading, openFeedback=openFeedback, signOut=signOut)
               else if e.name == "manageSubscription"
-                head title="Support Demos | Reactiive" robots="noindex, nofollow" canonical="/manage-subscription"
+                head title="Your subscription | Reactiive" robots="noindex, nofollow" canonical="/manage-subscription"
                 Container()
-                  if accounts and me.signedIn
+                  if accounts and me.signedIn and me.hasPlan
                     ManageSubscriptionPage(me=me, cancel=openCancel)
               else if e.name == "docs"
                 head title="Reactiive" description="Discover the beauty of React Native and how to build stunning animations with Reanimated and Skia"

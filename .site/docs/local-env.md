@@ -125,7 +125,8 @@ and its rollback, on the one origin the browser's storage belongs to. On it:
 - `tools/local-env/storage-continuity.ts [--headed]`: every key the old site writes survives the switch and is used,
   both ways, and a brand-new visitor is untouched (the contract and the commands: `docs/storage.md`).
 - `tools/local-env/account-parity.ts`: `/profile`, `/manage-subscription` (no plan, active, cancelled, billing issue),
-  the avatar menu, the cancel confirmation and the sign-in dialog, old against new at 1440 and 390, pixel-diffed.
+  the avatar menu, the cancel confirmation and the sign-in dialog, old against new at 1440 and 390, pixel-diffed; the
+  screens changed on purpose (decisions.md D26) are checked by the new side's text instead.
 
 Both answer `/api/user/info` in the browser for a made-up token and never forward `/api/purchase/*` or `/api/refund/*`.
 

@@ -12,6 +12,7 @@ import { launch, newPage, type Page } from '../parity/cdp.ts';
 const ORIGIN = (process.argv[2] ?? `http://localhost:${process.env.SITE_PORT ?? 4314}`).replace(/\/$/, '');
 const TOKEN = 'e2e-test-token';
 const USER = { id: 1, name: 'Test Person', email: 'test.person@example.com', profilePicture: '' };
+const SPONSORS = 'https://github.com/sponsors/enzomanuelmangano';
 const results: [string, boolean, string][] = [];
 const check = (name: string, ok: boolean, detail = '') => { results.push([name, ok, detail]); console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? `: ${detail}` : ''}`); };
 const until = async (page: Page, expr: string, ms = 8000) => { for (let t = 0; t < ms; t += 100) { if (await page.eval(`!!(${expr})`).catch(() => false)) return true; await Bun.sleep(100); } return false; };
@@ -27,7 +28,8 @@ const short = (u: string) => { try { const x = new URL(u); return `${x.host} red
 const { cdp, kill } = await launch({ port: 9371 });
 try {
   const page = await newPage(cdp, 1440);
-  // Mocked endpoints (CDP Fetch): user/info for the test token, feedback/submit.
+  // Mocked endpoints (CDP Fetch): user/info for the test token (`plan`: none until step 4b), feedback/submit.
+  let plan: unknown = null;
   const sent: { url: string; method: string; auth: string; body: string }[] = [];
   await page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/user/info*' }, { urlPattern: '*/api/feedback/submit*' }] });
   page.on(async (e) => {
@@ -36,7 +38,7 @@ try {
     const auth = request.headers.Authorization ?? request.headers.authorization ?? '';
     if (!auth.endsWith(TOKEN)) return page.send('Fetch.continueRequest', { requestId }); // the real API answers (401)
     sent.push({ url: request.url, method: request.method, auth: auth.replace(TOKEN, '<test token>'), body: request.postData ?? '' });
-    const body = request.url.includes('/user/info') ? { user: USER, plan: null, github: null, patreon: null } : { success: true };
+    const body = request.url.includes('/user/info') ? { user: USER, plan, github: null, patreon: null } : { success: true };
     await page.send('Fetch.fulfillRequest', { requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Access-Control-Allow-Origin', value: '*' }], body: Buffer.from(JSON.stringify(body)).toString('base64') });
   });
 
@@ -65,6 +67,10 @@ try {
   check('token taken from the URL, URL cleaned', await until(page, `location.pathname === '/profile' && location.search === ''`));
   check('signed in: avatar in the header', await until(page, visible('avatar')));
   check('/profile drawn', await until(page, `document.body.innerText.includes('Profile Settings')`));
+  // Without a plan (decisions.md D26): the sponsor box, nothing about a subscription.
+  const external = (id: string) => `(e => !!e && e.href === '${SPONSORS}' && e.target === '_blank' && e.rel.includes('noopener') && e.innerText.trim() === 'Sponsor on GitHub')(${q(id)})`;
+  check('no plan: /profile invites to sponsor on GitHub', await until(page, external('sponsor-github'))
+    && !(await page.eval<boolean>(`!!${q('subscription-box')} || /No Active Plan|Manage Subscription/.test(document.body.innerText)`)));
   check('user/info sent with the Bearer token', sent.some((s) => s.url.endsWith('/api/user/info') && s.auth === 'Bearer <test token>'));
 
   // 3. The session survives navigation and a reload.
@@ -74,6 +80,10 @@ try {
   check('session kept across reload (/profile stays)', await until(page, `document.body.innerText.includes('Profile Settings')`) && (await page.eval<string>('location.pathname')) === '/profile');
   await click(page, 'avatar');
   check('menu: name and email', await until(page, `document.body.innerText.includes('${USER.email}') && document.body.innerText.includes('${USER.name}')`));
+
+  check('no plan: menu: "Sponsor on GitHub", external, no "Manage Support"', await until(page, external('menu-sponsor')) && !(await page.eval<boolean>(`!!${q('menu-support')}`)));
+  await page.goto(`${ORIGIN}/manage-subscription`);
+  check('no plan: /manage-subscription goes to /profile', await until(page, `location.pathname === '/profile' && ${q('sponsor-box')}`));
 
   // 4. Feedback: the request's shape, mocked (no Telegram message).
   await click(page, 'send-feedback');
@@ -86,6 +96,30 @@ try {
   const fb = sent.find((s) => s.url.endsWith('/api/feedback/submit'));
   const body = fb ? JSON.parse(fb.body) : {};
   check('feedback POST shape', !!fb && fb.method === 'POST' && fb.auth === 'Bearer <test token>' && body.feedback === '[localhost test] feedback from the e2e check' && body.isAnonymous === true, fb ? JSON.stringify({ ...body }) : 'not sent');
+
+  // 4b. With a plan (nothing is pressed: no purchase endpoint is called): status and cancel, nothing to buy.
+  plan = { id: 1, userId: 1, itemId: 'x', subscriptionType: 'monthly', status: 'active', expiresAt: '2027-01-15T12:00:00.000Z' };
+  await page.goto(`${ORIGIN}/profile`);
+  check('plan: /profile shows the subscription, no sponsor box', await until(page, q('subscription-box')) && !(await page.eval<boolean>(`!!${q('sponsor-box')}`)));
+  await page.goto(`${ORIGIN}/manage-subscription`);
+  check('plan: /manage-subscription: "Your subscription", Cancel Plan, nothing sold', await until(page, `document.body.innerText.includes('Your subscription') && ${q('cancel-plan')}`)
+    && !(await page.eval<boolean>(`/All 100\\+|Plan Benefits|Review Billing|refund|\\$\\d/i.test(document.body.innerText) || !!document.querySelector('a[href*="checkout."]')`)));
+  // Every status that can still bill has "Cancel Plan"; a cancelled or expired one has not (nothing is confirmed).
+  for (const [status, bills] of [['past_due', true], ['unpaid', true], ['on_trial', true], ['paused', true], ['pause', true], ['cancelled', false], ['expired', false]] as const) {
+    plan = { id: 1, userId: 1, itemId: 'x', subscriptionType: 'monthly', status, expiresAt: '2027-01-15T12:00:00.000Z' };
+    await page.goto(`${ORIGIN}/manage-subscription`);
+    const drawn = await until(page, q('plan-card'));
+    const button = await page.eval<boolean>(`!!${q('cancel-plan')}`);
+    let said = '';
+    if (button) {
+      await click(page, 'cancel-plan');
+      await until(page, `document.getElementById('cancel-subscription')?.open`);
+      said = await page.eval<string>(`${q('cancel-dialog')}.innerText`);
+    }
+    const dialog = !bills || said.includes(status === 'on_trial' ? "keep access until January 15, 2027" : 'will not renew');
+    check(`plan ${status}: ${bills ? '"Cancel Plan" and its confirmation' : 'no "Cancel Plan"'}`, drawn && button === bills && dialog);
+  }
+  plan = null;
 
   // 5. Sign out.
   await page.goto(`${ORIGIN}/articles`);

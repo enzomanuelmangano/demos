@@ -249,6 +249,8 @@ and keyframes from Exact (feedback noted).
 
 ## D15. The accounts: the reference's API as the backend, its client ported, off without the env (branch site-env, 2026-11-23)
 
+**Amended by D26**: no new subscriptions; a reader without a plan is sent to GitHub Sponsors, a subscriber can only see the plan and cancel it.
+
 - **Backend: the reference's own Next API, unchanged.** Locally `tools/local-env/api.ts` runs it from a `git archive`
   copy (never the reference clone) on :3000 with the owner's env file in its process environment only;
   `tools/serve.ts` proxies `/api/*` same-origin (redirects unfollowed, so OAuth works). In production compose's
@@ -848,3 +850,24 @@ press there belongs to the demo) get a menu drawn by the bridge with the same lo
 `{ demos: 'read', slug }` to the page's origin; `web/sim-goto.js` hears only a visible Demos frame and clicks a link, so
 the router navigates in place (one entry, the article's top, Back returns). A demo the reader opened is left open.
 Checked by `tools/parity/sim-read.ts`. All 109 demos of the app have a post today; one without would show no item.
+
+## D26. No new subscriptions: sponsor on GitHub; a subscriber can only see the plan and cancel it (owner, 2026-11-26)
+
+Supersedes the subscription parts of D15 and of the owner's 2026-11-23 "status and cancel only".
+
+- **Without a plan** (no `plan` in `/api/user/info`): `/profile` shows "Support Demos" with "Sponsor on GitHub"
+  (github.com/sponsors/enzomanuelmangano, /demos's Sponsor heart) where the SubscriptionBox's no-plan face was; the
+  avatar menu's "Support Demos" is "Sponsor on GitHub", the same external link; `/manage-subscription` redirects to
+  `/profile`. The sponsor box waits while the user's info is being asked, so a subscriber never sees it. (Phones have no
+  avatar menu: the box on `/profile` is their way to it.)
+- **With a plan, any status**: the SubscriptionBox (a plan neither active nor cancelled keeps its name and says its
+  payment failed, it is paused, on trial or no longer active, with no date), "Manage Support", and `/manage-subscription` as "Your
+  subscription": the plan's card, "Cancel Plan" for every status that can still bill (`active`, `past_due`, `unpaid`,
+  `on_trial`, `paused`/`pause`; not `cancelled` or `expired`: anyone subscribed can unsubscribe), the warning saying so.
+  The confirmation promises access until a date only for `active` and `on_trial`. The reference's cancel route filters
+  no status; it also ignores Lemon Squeezy's error answer (the SDK does not throw), so it says success even when the
+  cancel was refused, and the page then shows the unchanged status. Removed there: the "All 100+ animations" paragraph, "Review Billing Details" (checkout.reactiive.io), the
+  refund sentence of the cancelled banner (now a GitHub Sponsors link) and Plan Benefits (it advertised access that
+  is bought).
+- The only purchase endpoint any code calls stays `cancel-subscription`. Signed out: unchanged.
+- `tools/local-env/account-parity.ts`: these screens differ from live on purpose and are checked by their text.
