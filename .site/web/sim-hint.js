@@ -300,11 +300,12 @@
       arrAnims.push(svg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: 'ease-out', fill: 'backwards' }));
       arrAnims.push(last = svg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, delay: 3200, easing: 'ease-out', fill: 'forwards' }));
     } else {
-      path.style.strokeDasharray = len + ' ' + len;
-      arrAnims.push(path.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: DRAW, easing: 'cubic-bezier(.6,0,.2,1)', fill: 'both' }));
+      // The gap is longer than the stroke and the hidden offset 2 px past it, so no round cap shows before its stroke
+      // draws (a `len len` dash leaves a dot at the tip from the first frame).
+      var hide = function (el, n) { el.style.strokeDasharray = n + ' ' + (n + 4); return [{ strokeDashoffset: n + 2 }, { strokeDashoffset: 0 }]; };
+      arrAnims.push(path.animate(hide(path, len), { duration: DRAW, easing: 'cubic-bezier(.6,0,.2,1)', fill: 'both' }));
       heads.forEach(function (h, i) {
-        h.style.strokeDasharray = hl + ' ' + hl;
-        arrAnims.push(h.animate([{ strokeDashoffset: hl }, { strokeDashoffset: 0 }], { duration: 200, delay: DRAW - 90 + i * 50, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'both' }));
+        arrAnims.push(h.animate(hide(h, hl), { duration: 200, delay: DRAW - 30 + i * 50, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'both' }));
       });
       arrAnims.push(svg.animate([{ transform: 'none' }, { transform: by(5) }, { transform: 'none' }], { duration: HOLD / 2, delay: t0, iterations: 2, easing: 'cubic-bezier(.45,0,.55,1)' }));
       arrAnims.push(last = svg.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: by(8) }], { duration: 450, delay: t0 + HOLD, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' }));
