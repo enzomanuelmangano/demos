@@ -112,7 +112,10 @@ sandboxed frame of `/demos/app/`, both ends small and guarded:
   loud patch of the composed `modules/index.js`, which reads `globalThis.__siteArticle` and does nothing without it; a
   search result's and an open demo's menu drawn by the bridge), only once the page that frames the app has spoken, and
   posts `{ demos: 'read', slug }` to that origin. The page (`web/sim-goto.js`) accepts it only from a visible Demos
-  frame's window, with the opaque or its own origin, and a slug of `[a-z0-9-]`. Unframed, and on iOS, nothing changes.
+  frame's window, with the opaque or its own origin, and a slug of `[a-z0-9-]`. The Inspiration sheet of an open demo with a post gets the item too: the
+  bridge appends one button (`web-sheet-read`) to the app's live sheet panel, after the app's own regions, and its press
+  dispatches a tap on the sheet's scrim (the app's own dismiss); the same conditions (framed, the page has spoken, a
+  post). Unframed, and on iOS, nothing changes.
 - **The app's end is the site's code, not the app's** (`.site/tools/demos-web/bridge.js`). `tools/compose.ts` writes it
   inline into the head of the artifact's `index.html` and `shell.html` (its copy under `/demos/app/`, never the Demos
   app's sources or its own build), a classic script that runs before the app's modules. Installed only when framed
