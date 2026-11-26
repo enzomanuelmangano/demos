@@ -280,3 +280,9 @@ html[data-scrolled] [data-motion~=bar],[data-motion~=bar][data-motion~=open],htm
 /* Italic as live draws it: Inter and Source Code Pro have no italic face here or there, and live's browser slants the
    upright one; Exact's root says font-synthesis: none, which drew every em, italic link and code comment upright. */
 html #exact-root{font-synthesis-style:auto}
+/* The phone's still fades in once it is decoded (web/sim-hint.js sets html[data-still]), instead of popping in at full
+   opacity when its background image lands (owner, 2026-11-26: "it should start with a fade-in"). Opacity only: the
+   compositor's. Reduced motion: no fade. The app's frame fades over it (sim-frame, 300 ms). */
+[data-motion~=sim-still]{opacity:0;transition:opacity 450ms cubic-bezier(.2,.7,.2,1)}
+html[data-still] [data-motion~=sim-still]{opacity:1}
+@media (prefers-reduced-motion:reduce){[data-motion~=sim-still]{transition:none}}

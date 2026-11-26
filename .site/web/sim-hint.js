@@ -37,7 +37,8 @@
   function frames() { return document.querySelectorAll('iframe[title="Demos"]'); }
   function all() { var fs = frames(); for (var i = 0; i < fs.length; i++) adopt(fs[i]); }
   function adopt(f) {
-    if (!seen.has(f)) { seen.add(f); f.addEventListener('load', function () { f.removeAttribute('data-ready'); tell(f); }); if (io) io.observe(f); }
+    // A frame unloaded (its src back to about:blank) is not ready; the app's own new documents say `boot` (below).
+    if (!seen.has(f)) { seen.add(f); f.addEventListener('load', function () { if (!/\/demos\/app\//.test(f.src)) f.removeAttribute('data-ready'); tell(f); }); if (io) io.observe(f); }
     tell(f);
   }
   var shownPath = location.pathname;
@@ -51,13 +52,26 @@
   addEventListener('popstate', function () { at(location.pathname); });
   addEventListener('pageshow', function () { at(location.pathname); });
   document.addEventListener('visibilitychange', all);
-  // The app says when its launcher answers input (`{ demos: 'ready' }`, tools/demos-web/bridge.js): the frame shows at
-  // once (web/head.css `[data-ready]`), not on the page's fallback timer (the frame's load + 800 ms), so the phone a
-  // reader sees is the one that answers. A new document in the frame (its load) clears it.
+  // The phone's still (web/head.css sim-still): decoded off the main thread, then faded in (html[data-still]). Where
+  // the page draws no still (under 768 px) the image is never asked for here either. A failure shows it as before.
+  var still = function () { document.documentElement.setAttribute('data-still', ''); };
+  if (matchMedia('(min-width: 768px)').matches && /^\/demos\/?$/.test(location.pathname)) {
+    var img = new Image();
+    img.src = '/assets/images/demos/sim-still.webp';
+    (img.decode ? img.decode() : Promise.reject()).then(still, function () { img.complete ? still() : img.addEventListener('load', still); img.addEventListener('error', still); });
+    setTimeout(still, 4000);
+  } else still();
+  // The app says when its launcher answers input and is drawn (`{ demos: 'ready' }`, tools/demos-web/bridge.js): the
+  // frame shows at once (web/head.css `[data-ready]`), not on the page's fallback timer (the frame's load + 800 ms),
+  // so the phone a reader sees is the one that answers. Each new document of the app first says `boot`, which clears
+  // it. Only from a Demos frame's own window, with its opaque origin.
   addEventListener('message', function (e) {
-    if (!e.data || e.data.demos !== 'ready') return;
+    var d = e.data;
+    if (!d || (d.demos !== 'ready' && d.demos !== 'boot') || e.origin !== 'null') return;
     var fs = frames();
-    for (var i = 0; i < fs.length; i++) if (fs[i].contentWindow === e.source) fs[i].setAttribute('data-ready', '');
+    for (var i = 0; i < fs.length; i++) if (fs[i].contentWindow === e.source) {
+      if (d.demos === 'ready') fs[i].setAttribute('data-ready', ''); else fs[i].removeAttribute('data-ready');
+    }
   });
   // A route drawn or a frame added: derive `current` from the address again. Without the Navigation API (Safari before
   // 26, older Firefox) an in-app link away from /demos fires no popstate; the route's own DOM change catches it.
