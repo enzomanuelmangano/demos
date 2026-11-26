@@ -52,6 +52,9 @@ component IrSquare
   derive grow = kind == "timing" ? irQuad(300) : irSpring()
   derive radius = rounded ? (go ? 25 : 50) : 0
   derive corner = plays == 0 ? "none" : kind == "final" ? irSpring() : kind == "springRadius" ? irQuad(500) : "none"
+  // The square's corner transitions, whole (Exact checks every value an attribute can take, "translate none" too).
+  derive barMove = plays == 0 ? "none" : kind == "final" ? `translate ${irSpring()}` : kind == "springRadius" ? `translate ${irQuad(500)}` : "none"
+  derive discMove = plays == 0 ? "none" : kind == "final" ? `translate ${irSpring()}, scale ${irSpring()}` : kind == "springRadius" ? `translate ${irQuad(500)}, scale ${irQuad(500)}` : "none"
   action play
     plays = plays + 1
   action restart
@@ -65,7 +68,8 @@ component IrSquare
           view width=100 height=100 flex-shrink=0 opacity=opacity scale=scale resize=mounted
             rotate=(kind == "final" ? (go ? "180deg" : "360deg") : "0deg")
             transition=(plays == 0 ? "none" : `opacity ${fade}, scale ${grow}, rotate ${fade}`)
-            MorphSquare(size=100, color="blue", alpha=1, radius=radius, rmax=50, timing=corner, prefix="", loop="none")
+            MorphSquare(size=100, color="blue", alpha=1, radius=radius, rmax=50, barMove=barMove,
+              discMove=discMove, bar="none", disc="none")
       BoxButton(kind="play", index=0, label="Play", press=play)
       if kind == "final"
         BoxButton(kind="reset", index=1, label="Restart", press=restart)
