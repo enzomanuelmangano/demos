@@ -184,7 +184,7 @@ function asset(kind: string, slug: string, rel: string): { url: string; width: n
       // ImageMagick where the machine has it; else sharp (tools/webp.ts: Vercel's build image has no ImageMagick).
       const r = HAS_MAGICK
         ? spawnSync('magick', [file, '-resize', `${MAX_WIDTH}x>`, '-quality', '82', '-define', 'webp:method=6', out])
-        : spawnSync('bun', [join(import.meta.dir, 'webp.ts'), file, out, String(MAX_WIDTH)]);
+        : spawnSync(process.execPath, [join(import.meta.dir, 'webp.ts'), file, out, String(MAX_WIDTH)]);
       if (r.status !== 0) throw new Error(`${HAS_MAGICK ? 'magick' : 'sharp'} failed on ${file}: ${r.stderr}`);
     }
     if (statSync(out).size < statSync(file).size) name = webp;

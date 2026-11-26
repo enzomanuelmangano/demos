@@ -5,7 +5,9 @@ with Root Directory `.site`; `.site/vercel.json` sets the rest: install (bun 1.4
 (`tools/vercel-build.ts`: the Demos app's web artifact from the build cache or built with Rust, the site, compose into
 `.vercel/output`, which Vercel serves as is: Build Output API v3), and an ignore step that skips a commit touching only
 `.legacy/`, `.parity/`, `.github/` or Markdown. Every push makes a preview; `main` makes production. A site-only change
-reuses the cached artifact (a few minutes); a change to the demos rebuilds it (Rust to wasm: the first build is long).
+reuses the cached artifact; a change to the demos rebuilds it. Every build needs Rust (Exact compiles its web tools:
+no prebuilt set), so the toolchain, Exact's tools, Playwright's browser and the demos' target dir live in
+`.vercel/cache` (kept between builds); the first build installs all of it and is the long one (Hobby: 45 min cap).
 
 ## One-time setup (owner)
 

@@ -3,10 +3,12 @@
 // .github/workflows/site-deploy.yml does, on Vercel's build machine, and leaves the Build Output API tree in
 // .site/.vercel/output, which Vercel serves as is.
 //
+//   0. The toolchain, every build (the site's own web build compiles Exact's tools with Rust too: Exact ships no
+//      prebuilt set): rustup and `exact setup --platform web`, installed into .vercel/cache, the directory Vercel
+//      keeps between builds (RUSTUP_HOME, CARGO_HOME, PLAYWRIGHT_BROWSERS_PATH, and ~/.cache/exact linked there), so a
+//      later build finds them. HOME itself stays (rustup refuses another one; bun reads its config there).
 //   1. The Demos app's web artifact (/demos/app/), keyed by its inputs (tools/demos-web/build.ts --key-only): taken
-//      from the build cache when the key is there (a site-only change: no Rust at all), else built (rustup, Exact at
-//      the demos' seed, `exact setup --platform web`, the wasm build) and put in the cache. The cache lives under
-//      node_modules/.cache, which Vercel keeps between builds.
+//      from the cache when the key is there, else built (the wasm build, its target dir in the cache too) and kept.
 //   2. The site: Exact at the site's seed, the content modules, the accounts' public settings from the project's
 //      environment variables (written to the gitignored .env.local the build reads), `bun run build`.
 //   3. Compose (tools/compose.ts): the site at /, the artifact at /demos/app/, routes, /api/* to LEGACY_API_ORIGIN.
@@ -15,15 +17,26 @@
 // EXPO_PUBLIC_ACCESS_KEY, EXPO_PUBLIC_AMPLITUDE_API_KEY, EXPO_PUBLIC_SENTRY_DSN, optionally EXPO_PUBLIC_WEBSITE_URL,
 // and LEGACY_API_ORIGIN (the old Next deployment that keeps /api/*). SKIP_HEAD_PARITY=1 skips the head comparison
 // with the live site. VERCEL_ENV=production refuses a build without the accounts and the old API (the workflow's rule).
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const SITE = resolve(import.meta.dir, '..');
 const ROOT = resolve(SITE, '..');
-const CACHE = join(SITE, 'node_modules/.cache/reactiive-site');
+const CACHE = join(SITE, '.vercel/cache/reactiive-site');
 const env = process.env;
+// On Vercel, the toolchain's homes inside the kept cache (step 0); elsewhere (a developer's machine) its own.
+if (env.VERCEL) {
+  env.RUSTUP_HOME = join(CACHE, 'rustup');
+  env.CARGO_HOME = join(CACHE, 'cargo');
+  env.PLAYWRIGHT_BROWSERS_PATH = join(CACHE, 'ms-playwright');
+  env.PATH = `${join(env.CARGO_HOME, 'bin')}:${env.PATH}`;
+  // Exact's compiled tools live in ~/.cache/exact (scripts/tools.mjs cacheDir): a link into the cache.
+  const link = join(env.HOME ?? '/root', '.cache/exact'), kept = join(CACHE, 'exact-tools');
+  mkdirSync(kept, { recursive: true });
+  mkdirSync(join(env.HOME ?? '/root', '.cache'), { recursive: true });
+  if (!existsSync(link)) symlinkSync(kept, link);
+} else env.PATH = `${join(env.HOME ?? '', '.cargo/bin')}:${env.PATH}`;
 const t0 = Date.now();
 const step = (what: string) => console.log(`\n▸ ${what} (+${Math.round((Date.now() - t0) / 1000)} s)`);
 const run = (cmd: string, opts: { cwd?: string; env?: Record<string, string | undefined> } = {}) => {
@@ -62,6 +75,18 @@ if (!(accounts && legacy)) {
   console.warn(`warning: ${msg}`);
 }
 
+// ---- 0. the toolchain --------------------------------------------------------------------------------------------
+if (spawnSync('bash', ['-c', 'command -v cargo'], { env }).status !== 0) {
+  step('rustup (first build: cached for the next ones)');
+  run(`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path`);
+}
+const exact = exactAt(seedOf(join(ROOT, 'exact.mjs')));
+// The root Cargo.toml names the vendored crates under .exact/checkout; setup reads it, so the link comes first.
+mkdirSync(join(ROOT, '.exact'), { recursive: true });
+run(`ln -sfn ${exact} ${join(ROOT, '.exact/checkout')}`);
+step('exact setup --platform web');
+run(`bun ${exact}/scripts/exact.mjs setup --platform web`, { cwd: ROOT });
+
 // ---- 1. the Demos app's web artifact -----------------------------------------------------------------------------
 step('the demos artifact');
 const key = out('bun tools/demos-web/build.ts --key-only').split('\n').pop()!;
@@ -73,20 +98,8 @@ if (existsSync(join(cached, 'dist'))) {
   cpSync(cached, artifact, { recursive: true });
 } else {
   console.log(`cache miss: ${key}: building the Demos app's web (Rust to wasm; the first build takes a while)`);
-  const cargoBin = join(homedir(), '.cargo/bin');
-  env.PATH = `${cargoBin}:${env.PATH}`;
-  if (spawnSync('bash', ['-c', 'command -v cargo'], { env }).status !== 0) {
-    step('rustup');
-    run(`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --no-modify-path`);
-  }
-  const exact = exactAt(seedOf(join(ROOT, 'exact.mjs')));
-  // The root Cargo.toml names the vendored crates under .exact/checkout; setup reads it, so the link comes first.
-  mkdirSync(join(ROOT, '.exact'), { recursive: true });
-  run(`ln -sfn ${exact} ${join(ROOT, '.exact/checkout')}`);
-  step('exact setup --platform web');
-  run(`bun ${exact}/scripts/exact.mjs setup --platform web`, { cwd: ROOT });
   step('the demos web build');
-  run('bun .site/tools/demos-web/build.ts', { cwd: ROOT, env: { EXACT: exact, CARGO_TARGET_DIR: '/tmp/demos-web-target', DEMOS_WEB_SCRATCH: '/tmp/demos-web-src' } });
+  run('bun .site/tools/demos-web/build.ts', { cwd: ROOT, env: { EXACT: exact, CARGO_TARGET_DIR: join(CACHE, 'demos-web-target'), DEMOS_WEB_SCRATCH: '/tmp/demos-web-src' } });
   if (!existsSync(join(artifact, 'dist'))) throw new Error(`the demos build left no ${artifact}/dist`);
   // One artifact in the cache: the newest.
   rmSync(join(CACHE, 'demos-web'), { recursive: true, force: true });
@@ -113,4 +126,5 @@ if (env.SKIP_HEAD_PARITY !== '1') { step('head parity with the live site'); run(
 // ---- 3. compose ----------------------------------------------------------------------------------------------------
 step('compose');
 run('bun tools/compose.ts', { env: { SITE_ORIGIN: env.SITE_ORIGIN || 'https://reactiive.io' } });
+console.log(`cache: ${out(`du -sh ${CACHE} 2>/dev/null | cut -f1`)} in .vercel/cache (kept between builds)`);
 console.log(`\nvercel-build: .vercel/output ready (${readdirSync(join(SITE, '.vercel/output/static')).length} entries at the root) in ${Math.round((Date.now() - t0) / 1000)} s`);
