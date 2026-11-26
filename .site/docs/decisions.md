@@ -556,6 +556,10 @@ inside the app's own renderer process and the page's, per interaction; site vs t
 
 ## D19. The framed app says it is live: a one-time touch demo (owner, 2026-11-23)
 
+**Superseded (owner, 2026-11-26)**: the touch demo is removed. "When I try to interact with the sim the automatic demo
+often takes over ... it must never happen. The sim must be interactive and usable from the start; the arrow says it is
+interactive." Nothing on the page ever presses anything in the app; the arrow (D22) is the only invitation.
+
 The owner: "add a way to make people understand they can interact with the sim; right now it almost looks like an
 image" (a caption was rejected, D17 revised). Variants considered:
 
