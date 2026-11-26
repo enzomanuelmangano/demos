@@ -294,7 +294,7 @@ component App
       // builds and adopts their nodes (final sweep: every page's runtime start pays for each node).
       if accounts and me.signedIn
         FeedbackDialog(sending=feedbackSending, send=sendFeedback)
-        CancelDialog(expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
+        CancelDialog(status=me.planStatus, expires=me.expires, sending=pending(cancelled), confirm=confirmCancel)
       for e in stack(nav).slice(-1) key=e.id
         column navigationKey=`${e.id}` navigationScroll=`page-${e.id}` position="absolute" inset=0
           scroll document id=`page-${e.id}` flex=1 min-height=0

@@ -859,9 +859,12 @@ Supersedes the subscription parts of D15 and of the owner's 2026-11-23 "status a
   `/profile`. The sponsor box waits while the user's info is being asked, so a subscriber never sees it. (Phones have no
   avatar menu: the box on `/profile` is their way to it.)
 - **With a plan, any status**: the SubscriptionBox (a plan neither active nor cancelled keeps its name and says its
-  payment failed or that it is no longer active, with no date), "Manage Support", and `/manage-subscription` as "Your
-  subscription": the plan's card, "Cancel Plan" while active and while the payment fails (the warning says to cancel
-  below). Removed there: the "All 100+ animations" paragraph, "Review Billing Details" (checkout.reactiive.io), the
+  payment failed, it is paused, on trial or no longer active, with no date), "Manage Support", and `/manage-subscription` as "Your
+  subscription": the plan's card, "Cancel Plan" for every status that can still bill (`active`, `past_due`, `unpaid`,
+  `on_trial`, `paused`/`pause`; not `cancelled` or `expired`: anyone subscribed can unsubscribe), the warning saying so.
+  The confirmation promises access until a date only for `active` and `on_trial`. The reference's cancel route filters
+  no status; it also ignores Lemon Squeezy's error answer (the SDK does not throw), so it says success even when the
+  cancel was refused, and the page then shows the unchanged status. Removed there: the "All 100+ animations" paragraph, "Review Billing Details" (checkout.reactiive.io), the
   refund sentence of the cancelled banner (now a GitHub Sponsors link) and Plan Benefits (it advertised access that
   is bought).
 - The only purchase endpoint any code calls stays `cancel-subscription`. Signed out: unchanged.

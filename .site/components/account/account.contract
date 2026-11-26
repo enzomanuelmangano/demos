@@ -363,7 +363,14 @@ fn capitalize(s: string): string = s.slice(0, 1).toUpperCase() + s.slice(1)
 // utils/get-payment-issue.ts
 fn running(status: string): bool = status == "active" or status == "cancelled"
 fn paymentIssue(status: string): bool = status == "past_due" or status == "unpaid"
-fn planIssue(status: string): bool = paymentIssue(status) or status == "expired" or status == "paused" or status == "pause" or status == "on_trial"
+// Lemon Squeezy writes a paused subscription both ways (its SDK's SubscriptionStatus).
+fn paused(status: string): bool = status == "paused" or status == "pause"
+fn planIssue(status: string): bool = paymentIssue(status) or paused(status) or status == "expired" or status == "on_trial"
+// Every status that can still charge the reader: each gets "Cancel Plan" (anyone subscribed can unsubscribe: D26).
+fn canBill(status: string): bool = status == "active" or status == "on_trial" or paused(status) or paymentIssue(status)
+// Paid up or on trial: access runs to a date. A paused or unpaid plan's date promises nothing.
+fn keepsAccess(status: string): bool = status == "active" or status == "on_trial"
+fn planNotice(status: string): string = paymentIssue(status) ? "There might be an issue with your payment." : (paused(status) ? "Your subscription is paused." : (status == "on_trial" ? "Your subscription is on a trial." : "Your subscription is no longer active."))
 
 // A reader without a plan (decisions.md D26): Demos is free; the one thing to do is sponsor it on GitHub.
 component SponsorBox
@@ -391,7 +398,7 @@ component SponsorHeart
       path d="M7.655 14.916v-.001h-.002l-.006-.003-.018-.01a22.066 22.066 0 0 1-3.744-2.584C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.25 1 5.797 1 7.153 1.802 8 3.02 8.847 1.802 10.203 1 11.75 1 13.914 1 16 2.836 16 5.5c0 2.85-2.044 5.231-3.886 6.818a22.094 22.094 0 0 1-3.433 2.414 7.152 7.152 0 0 1-.31.17l-.018.01-.008.004a.75.75 0 0 1-.69 0Z"
 
 // components/profile/SubscriptionBox, its supporter face: the plan's badge and sentence, and "Manage Subscription"
-// (PlanButtons). A plan that is neither active nor cancelled says so, with no date.
+// (PlanButtons). A plan that is neither active nor cancelled says what it is, with no date.
 component SubscriptionBox
   props
     me: Me
@@ -408,7 +415,7 @@ component SubscriptionBox
           user-select="none" testId="plan-badge"
           background-color=(running(me.planStatus) ? "rgb(from var(--color-success-500) r g b / 0.1)" : "rgb(from var(--color-warning-500) r g b / 0.1)")
           color=(running(me.planStatus) ? "var(--color-success-400)" : "var(--color-warning-400)")
-      text (running(me.planStatus) ? `You are currently on the ${capitalize(me.planType)} plan. ${me.planStatus == "active" ? "The plan will renew on" : "You will have access until"} ${me.expires != "" ? me.expires : "Unknown"}. Manage your subscription below.` : (paymentIssue(me.planStatus) ? "There might be an issue with your payment. Manage your subscription below." : "Your subscription is no longer active. Manage your subscription below."))
+      text (running(me.planStatus) ? `You are currently on the ${capitalize(me.planType)} plan. ${me.planStatus == "active" ? "The plan will renew on" : "You will have access until"} ${me.expires != "" ? me.expires : "Unknown"}. Manage your subscription below.` : `${planNotice(me.planStatus)} Manage your subscription below.`)
         margin-bottom=24 font-size="0.875rem" line-height="1.25rem" color="var(--color-text-body)"
       row
         link href="/manage-subscription" height=40 padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem" line-height="1.25rem"
@@ -420,7 +427,7 @@ component SubscriptionBox
 
 // app/manage-subscription, for a subscriber only (the root sends anyone else to /profile): their plan and its cancel,
 // nothing that sells (decisions.md D26). The warning banners, then the plan's card (its features, its badge, "Cancel
-// Plan" while active or while the payment fails).
+// Plan" while it can still bill).
 component ManageSubscriptionPage
   props
     me: Me
@@ -434,7 +441,7 @@ component ManageSubscriptionPage
         if planIssue(me.planStatus)
           view padding=16 border-radius=14 background-color="rgb(from var(--color-warning) r g b / 0.1)"
             box-shadow="inset 0 0 0 1px color-mix(in oklab, var(--color-warning) 22%, transparent)" testId="billing-warning"
-            text (paymentIssue(me.planStatus) ? "There might be an issue with your payment. You can cancel your plan below." : "Your subscription is no longer active.")
+            text (canBill(me.planStatus) ? `${planNotice(me.planStatus)} You can cancel your plan below.` : planNotice(me.planStatus))
               font-size="0.875rem" line-height="1.25rem" color="var(--color-warning)"
         if me.planStatus == "cancelled"
           view padding=16 border-radius=14 background-color="rgb(from var(--color-warning) r g b / 0.1)"
@@ -449,7 +456,7 @@ component ManageSubscriptionPage
           PlanCardOwn(me=me, cancel=cancel)
 
 // components/subscription/plan-card, the current plan's only, without its price: title, badge, features, and while the
-// plan is active or its payment fails "Cancel Plan", which opens the confirmation. Card md: the surface's radius
+// plan can still bill "Cancel Plan", which opens the confirmation. Card md: the surface's radius
 // and shadow, p-6, its background bg-white/[0.03] (later in the reference's CSS than bg-surface-elevated, so it wins);
 // border-success-500/30 colours a border of width 0 (preflight), so nothing is drawn for it.
 component PlanCardOwn
@@ -461,7 +468,7 @@ component PlanCardOwn
       row align-items="center" justify-content="space-between" margin-bottom=8
         text capitalize(me.planType) role="heading" aria-level=3 font-size="1rem" line-height="1.5rem" font-weight=500
           color="var(--color-text-primary)"
-        text (me.planStatus == "active" ? "Current Plan" : (me.planStatus == "cancelled" ? "Cancelled" : (paymentIssue(me.planStatus) ? "Payment Issue" : "Inactive"))) padding="4px 8px" border-radius=9999 font-size="0.75rem" line-height="1rem"
+        text (me.planStatus == "active" ? "Current Plan" : (me.planStatus == "cancelled" ? "Cancelled" : (paymentIssue(me.planStatus) ? "Payment Issue" : (paused(me.planStatus) ? "Paused" : (me.planStatus == "on_trial" ? "Trial" : "Inactive"))))) padding="4px 8px" border-radius=9999 font-size="0.75rem" line-height="1rem"
           background-color=(me.planStatus == "active" ? "rgb(from var(--color-success-500) r g b / 0.1)" : "rgb(from var(--color-warning-500) r g b / 0.1)")
           color=(me.planStatus == "active" ? "var(--color-success-400)" : "var(--color-warning-400)") testId="plan-status"
       column margin-top=16 gap=10
@@ -470,11 +477,11 @@ component PlanCardOwn
         if me.planType == "annual"
           Feature(text="Prioritized animation requests")
           Feature(text="Support long-term development")
-      if me.planStatus == "active" or paymentIssue(me.planStatus)
+      if canBill(me.planStatus)
         view padding-top=16 margin-top="auto"
           // Button ghost md + bg-danger-500/10 text-danger-400: in the reference's CSS the ghost's text-text-secondary,
           // hover:text-text-primary hover:bg-white/[0.06] and active:bg-white/[0.09] come later and win.
-          button appearance="none" press=cancel title="Your plan will remain active until the end of the billing period" width="100%" height=40
+          button appearance="none" press=cancel title=(keepsAccess(me.planStatus) ? "Your plan will remain active until the end of the billing period" : "Your plan will not renew") width="100%" height=40
             box-sizing="border-box" padding="0 16px" border-radius="var(--radius-control)" font-size="0.875rem" line-height="1.25rem" font-weight=500
             background-color="rgb(from var(--color-danger-500) r g b / 0.1)" color="var(--color-text-secondary)" data-motion="button focus press-ghost"
             testId="cancel-plan"
@@ -496,6 +503,7 @@ component Feature
 // reverse under 640 px, side by side from it), "Cancel subscription" with the spinner while the request is out.
 component CancelDialog
   props
+    status: string
     expires: string
     sending: bool
     confirm: action
@@ -508,7 +516,7 @@ component CancelDialog
         column align-items="center" gap=8 text-align="center"
           text "Cancel subscription?" id="cancel-title" role="heading" aria-level=2 font-size="1.25rem" line-height="1.75rem" font-weight=600
             letter-spacing="-0.01em" color="var(--color-text-primary)"
-          text (expires != "" ? `You'll keep access until ${expires}.` : "You'll keep access until the end of the current period.") max-width=340
+          text (not keepsAccess(status) ? "Your plan will be cancelled and will not renew." : (expires != "" ? `You'll keep access until ${expires}.` : "You'll keep access until the end of the current period.")) max-width=340
             font-size="0.875rem" line-height="1.5rem" color="var(--color-text-secondary)"
         view margin-top=28 display="flex" gap=12 data-motion="modal-actions"
           button appearance="none" commandfor="cancel-subscription" command="close" class=ButtonSecondary height=44 padding="0 24px"

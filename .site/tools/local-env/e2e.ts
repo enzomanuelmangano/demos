@@ -104,6 +104,21 @@ try {
   await page.goto(`${ORIGIN}/manage-subscription`);
   check('plan: /manage-subscription: "Your subscription", Cancel Plan, nothing sold', await until(page, `document.body.innerText.includes('Your subscription') && ${q('cancel-plan')}`)
     && !(await page.eval<boolean>(`/All 100\\+|Plan Benefits|Review Billing|refund|\\$\\d/i.test(document.body.innerText) || !!document.querySelector('a[href*="checkout."]')`)));
+  // Every status that can still bill has "Cancel Plan"; a cancelled or expired one has not (nothing is confirmed).
+  for (const [status, bills] of [['past_due', true], ['unpaid', true], ['on_trial', true], ['paused', true], ['pause', true], ['cancelled', false], ['expired', false]] as const) {
+    plan = { id: 1, userId: 1, itemId: 'x', subscriptionType: 'monthly', status, expiresAt: '2027-01-15T12:00:00.000Z' };
+    await page.goto(`${ORIGIN}/manage-subscription`);
+    const drawn = await until(page, q('plan-card'));
+    const button = await page.eval<boolean>(`!!${q('cancel-plan')}`);
+    let said = '';
+    if (button) {
+      await click(page, 'cancel-plan');
+      await until(page, `document.getElementById('cancel-subscription')?.open`);
+      said = await page.eval<string>(`${q('cancel-dialog')}.innerText`);
+    }
+    const dialog = !bills || said.includes(status === 'on_trial' ? "keep access until January 15, 2027" : 'will not renew');
+    check(`plan ${status}: ${bills ? '"Cancel Plan" and its confirmation' : 'no "Cancel Plan"'}`, drawn && button === bills && dialog);
+  }
   plan = null;
 
   // 5. Sign out.
