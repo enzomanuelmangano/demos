@@ -90,7 +90,9 @@ component SiteHeader
               view margin-right=35.6
                 LogoHome(width=114.4, height=28)
             button press=toggle appearance="none" aria-label=(menu ? "Close menu" : "Open menu") aria-expanded=menu
-              aria-controls="mobile-menu" padding=8 border-radius="var(--radius-md)" color="var(--color-text-secondary)" testId="menu"
+              // The lines' ink ends on the column's right edge, as the logo's starts on its left (owner, 2026-11-26): the
+              // 8 px padding and the icon's 4 px inset (MenuIcon, 16 of 24) given back; the hit area stays 40 px.
+              aria-controls="mobile-menu" padding=8 margin-right=-12 border-radius="var(--radius-md)" color="var(--color-text-secondary)" testId="menu"
               cursor="pointer" data-motion="colors focus"
               :hover
                 color = "#ffffff"

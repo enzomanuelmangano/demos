@@ -169,8 +169,11 @@ component DemosPage
               // Not pressable (owner, 2026-11-24): no handler, cursor or hover. The gradient paints only inside the box, and
               // the -0.04em tracking ends the box before the s's ink (1-2 px cut at 1024-1440 px): 0.1em of padding on the
               // right, given back by the margin, lets the ink in without moving anything.
+              // The D's left bearing (0.067em, 2.7 px at 40 px) set it in from the column the logo and the text start on:
+              // pulled back by it where the hero is left-aligned (under 640 px and from 1024 px: `centring` is 0 there).
               text "Demos" role="heading" aria-level=1 class=Gradient data-motion="lift-20 d-title"
                 font-size=titleSize() line-height=1.05 letter-spacing="-0.04em" padding-bottom="0.04em" padding-right="0.1em" margin-right="-0.1em"
+                margin-left=`min(0px, calc(-0.067em + ${centring()}))`
                 margin-top=steps(8, 32, 56, 56) margin-bottom=steps(14, 24, 28, 28)
             view width=centring() flex-shrink=1
           column data-motion="blur-in" data-delay="450"
@@ -211,7 +214,10 @@ component DemosPage
 component DemosLaunch
   view
     column width="100%" align-items="center" margin-top=36 data-motion="d-launch blur-in" data-delay="650"
+      // Under 640 px the hero is left-aligned: the button spans the column, its edges on the text's (owner, 2026-11-26,
+      // "not aligned" when it sat centred under left-aligned text); 640-768 px, centred like the hero.
       link href="/demos/app/" display="flex" align-items="center" justify-content="center" gap=10 height=52 padding-left=28
+        min-width=`min(100%, ${sm(9999, 0)})` box-sizing="border-box"
         padding-right=24 border-radius=9999 background-color="#f5f5f7" color="#0b0b0d" font-size=17 font-weight=600
         letter-spacing="-0.01em" white-space="nowrap" data-motion="button d-launch-button" testId="open-demos"
         text "Open the demos"

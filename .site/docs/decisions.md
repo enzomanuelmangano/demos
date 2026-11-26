@@ -722,7 +722,11 @@ under the phone at 1024 px.
 - **TestFlight**: "Try it on iPhone" (13 px, 50 % white, 80 % on hover), a phone glyph and a drawn north-east arrow (a
   typed U+2197 is outside the preloaded ASCII face and fetched the full Inter: a 1e-5 CLS). Optically aligned on the
   pill above (owner, 2026-11-26) where both are left-aligned (under 640 px and from 1024 px): the phone in a 16 px box
-  centred on the GitHub mark (10 px in), the words starting with the pill's (a 10 px gap), the arrow 6 px after them. One element at every
+  centred on the GitHub mark (10 px in), the words starting with the pill's (a 10 px gap), the arrow 6 px after them.
+- **Optical alignment under 640 px** (owner, 2026-11-26, "not aligned"): every ink edge on the column's 24 px lines.
+  The title is pulled back by its D's left bearing (0.067em, 2.7 px at 40 px) wherever the hero is left-aligned;
+  "Open the demos" spans the column (it sat centred under left-aligned copy); the header's menu button gives back
+  its 8 px padding and the icon's 4 px inset, so the lines end where the logo's mirror would (24 px from the right). One element at every
   width: on a phone it sits right above "Open the demos" and installs directly. From 1024 px with a mouse, hover or
   focus shows the TestFlight QR code under it (112 px on a dark card; 200 ms strong ease-out in from 96 % at its
   corner, 150 ms out): a desktop reader cannot install TestFlight there, a phone can scan it. The URL is one function,
