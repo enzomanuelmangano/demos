@@ -77,4 +77,4 @@ component Springboard
 
 fn demoName(demos: Demo[], slug: string): string = demos.filter(d => d.slug == slug).map(d => d.name).join("")
 
-fn sourceUrl(slug: string): string = `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
+fn sourceUrl(slug: string): string = `https://github.com/enzomanuelmangano/demos/tree/main/demos/${slug}`
