@@ -6,7 +6,7 @@
 // `icons`). Run before a TestFlight build:
 //   bun tools/app-icon.ts            (the count of demos.contract's Demo entries)
 //   bun tools/app-icon.ts --value=:) (any text)
-import { copyFileSync, cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -30,6 +30,8 @@ try {
   run('bun', ['run', 'build']);
   run('node', ['build/scripts/icons-set.js', `--value=${value}`]);
   copyFileSync(join(scratch, 'assets', 'icon.png'), join(root, 'assets', 'icon.png'));
+  // What the icon shows, for tools/testflight.ts to compare with the demos' count.
+  writeFileSync(join(root, 'tools', 'app-icon.count'), `${value}\n`);
   console.log(`app-icon: assets/icon.png with "${value}"`);
 } finally {
   rmSync(scratch, { recursive: true, force: true });
