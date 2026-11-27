@@ -17,6 +17,7 @@ import { ALIASES, DEMO_POSTS, LEGACY_DEMO_POSTS, NOT_IN_APP } from './demos-web/
 import { demosHead } from './demos-web/head.ts';
 import { patchDemos } from './demos-web/patches.ts';
 import { optimizeDemos } from './demos-web/optimize.ts';
+import { EXACT_PLACEHOLDER_ICON, ICON_TAGS, renderTags } from './seo/metadata.ts';
 
 type Route = { src?: string; dest?: string; status?: number; headers?: Record<string, string>; handle?: string; continue?: boolean };
 
@@ -132,7 +133,8 @@ for (const page of ['index.html', 'shell.html']) {
   const p = join(staticDir, MOUNT.slice(1), page);
   const html = readFileSync(p, 'utf8');
   if (!html.includes('<title>Demos</title>')) throw new Error(`compose: demos ${page} has no <title>Demos</title>`);
-  writeFileSync(p, html.replace('<title>Demos</title>', () => head + bridgeScript));
+  // The site's icon, not Exact's placeholder (a reader who opens /demos/app/ itself sees the tab's icon).
+  writeFileSync(p, html.replace('<title>Demos</title>', () => head + bridgeScript).replace(EXACT_PLACEHOLDER_ICON, () => renderTags(ICON_TAGS)));
 }
 
 if (existsSync(join(staticDir, 'signed-out.html'))) throw new Error('compose: signed-out.html collides with the site build');

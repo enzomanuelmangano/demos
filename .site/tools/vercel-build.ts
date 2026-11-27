@@ -128,7 +128,9 @@ if (accounts) {
   run('bun tools/storage-bridge.ts --check-key');
 }
 run('bun run build', { env: { EXACT: siteExact, SITE_ORIGIN: env.SITE_ORIGIN || 'https://reactiive.io' } });
-if (env.SKIP_HEAD_PARITY !== '1') { step('head parity with the live site'); run('bun tools/parity/head-diff.ts --ours dist'); }
+// Parity with the old Next site, at its own production URL (LEGACY_API_ORIGIN): since the cutover (2026-11-27)
+// reactiive.io is this site, so comparing with it would compare a build with the one before it.
+if (env.SKIP_HEAD_PARITY !== '1') { step('head parity with the old site'); run(`bun tools/parity/head-diff.ts --ours dist --live ${env.LEGACY_API_ORIGIN || 'https://reactiive-io-reactiive.vercel.app'}`); }
 
 // ---- 3. compose ----------------------------------------------------------------------------------------------------
 step('compose');
