@@ -123,6 +123,8 @@ for (const m of allPages()) {
   const [l, o] = [await fetchLive(lp), await ours(m.path === '/404' ? '/this-page-does-not-exist' : m.path, htmlFile(m.path))];
   const want = m.path === '/404' ? 404 : 200;
   if (o === undefined) { if (strict) report(m.path, ['  not built']); else skipped.push(m.path); continue; }
+  // A page new on this site: the live site answers 404 for it until the site goes live; nothing to compare.
+  if (m.newPage && l.status === 404) { console.log(`new  ${m.path} (not on the live site yet)`); continue; }
   const lines = l.status === want ? diffHeads(expectedLive(m, headOf(l.body)), headOf(o)) : [`  live answers ${l.status}, expected ${want}`];
   report(m.path, lines);
 }
@@ -148,6 +150,8 @@ for (const [path, generated, norm] of files) {
     for (const u of la) if (!lb.has(u)) lines.push(`  - not in ours: ${u}`);
     // The demo posts are listed by ours only (live left them out; D25): named, accepted, and all must be there.
     if (path === '/sitemap.xml') for (const d of loadDemoPosts()) { const u = `${SITE_URL}/demos/${d.slug}`; if (lb.has(u)) lb.delete(u); else lines.push(`  - demo post not listed: ${u}`); }
+    // So are the pages new on this site (metadata.ts newPage), until the live site has them.
+    if (path === '/sitemap.xml') for (const p of allPages().filter((p) => p.newPage)) { const u = `${SITE_URL}${p.path}`; if (lb.has(u)) { if (!la.has(u)) lb.delete(u); } else lines.push(`  - new page not listed: ${u}`); }
     for (const u of lb) if (!la.has(u)) lines.push(`  + only in ours: ${u}`);
     if (!lines.length && locs(l.body).filter((u) => la.has(u)).join() !== locs(text).filter((u) => la.has(u)).join()) lines.push('  ~ same URLs, different order');
     if (!lines.length && path === '/rss.xml') { const x = a.filter((s, i) => s !== b[i]); if (x.length) lines.push(`  ~ ${x.length} lines differ, first: ${x[0]}`); }

@@ -1,0 +1,990 @@
+//! A Gaussian blur for a layer drawn into a texture: separable, run at a lower resolution where σ
+//! is large (the result is smooth, so a bilinear read back up is exact to the eye). Outside the
+//! texture is transparent, or with [`Blur::clamped`] the edge pixels repeated outward.
+//!
+//! Two forms: [`Blur`], a plain two-pass blur, and [`GraphitePlan`] / [`GraphiteBlur`], which
+//! plan and run the blur with the same geometry and kernels as Skia Graphite's blur image filter
+//! so a blurred demo keeps its pixels.
+
+use crate::wgpu;
+
+const SHADER: &str = r#"
+struct P { dir: vec2<f32>, sigma: f32, clamp: f32 };
+@group(0) @binding(0) var src: texture_2d<f32>;
+@group(0) @binding(1) var smp: sampler;
+@group(0) @binding(2) var<uniform> p: P;
+struct Out { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
+@vertex fn vs(@builtin(vertex_index) i: u32) -> Out {
+    let q = vec2<f32>(f32(i32(i & 1u) * 4 - 1), f32(i32(i >> 1u) * 4 - 1));
+    var o: Out; o.pos = vec4<f32>(q, 0.0, 1.0); o.uv = vec2<f32>(q.x * 0.5 + 0.5, 0.5 - q.y * 0.5); return o;
+}
+fn tap(uv: vec2<f32>) -> vec4<f32> {
+    if (p.clamp < 0.5 && (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)))) { return vec4<f32>(0.0); }
+    return textureSampleLevel(src, smp, uv, 0.0);
+}
+@fragment fn down(in: Out) -> @location(0) vec4<f32> { return textureSampleLevel(src, smp, in.uv, 0.0); }
+@fragment fn gauss(in: Out) -> @location(0) vec4<f32> {
+    let r = i32(ceil(3.0 * p.sigma));
+    let texel = p.dir / vec2<f32>(textureDimensions(src));
+    var sum = vec4<f32>(0.0);
+    var weight = 0.0;
+    for (var i = -r; i <= r; i = i + 1) {
+        let x = f32(i);
+        let w = exp(-0.5 * x * x / (p.sigma * p.sigma));
+        sum = sum + tap(in.uv + texel * x) * w;
+        weight = weight + w;
+    }
+    return sum / weight;
+}
+"#;
+
+/// A blur's textures and pipelines, kept between frames.
+#[derive(Default)]
+pub struct Blur {
+    /// Outside the texture is its nearest edge pixel (the default is transparent).
+    pub clamp: bool,
+    /// The device's persistent pipeline cache, if the host has one.
+    pub pipeline_cache: Option<wgpu::PipelineCache>,
+    built: Option<Built>,
+    size: (u32, u32),
+    a: Option<wgpu::TextureView>,
+    b: Option<wgpu::TextureView>,
+}
+
+struct Built {
+    format: wgpu::TextureFormat,
+    down: wgpu::RenderPipeline,
+    gauss: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+    params: [wgpu::Buffer; 3],
+}
+
+impl Blur {
+    /// A blur whose source's edges extend outward.
+    pub fn clamped() -> Blur {
+        Blur { clamp: true, ..Blur::default() }
+    }
+
+    /// Blurs `source` (`width`×`height` pixels of `format`) by `sigma` pixels and returns the
+    /// blurred texture, at `1/factor` of the size, to be sampled with a linear filter.
+    /// `factor` is chosen so σ is about 4 texels where it is large.
+    #[allow(clippy::too_many_arguments)]
+    pub fn run(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        source: &wgpu::TextureView,
+        format: wgpu::TextureFormat,
+        width: u32,
+        height: u32,
+        sigma: f32,
+    ) -> &wgpu::TextureView {
+        let factor = (sigma / 4.0).floor().clamp(1.0, 8.0);
+        let size = (((width as f32) / factor).ceil() as u32, ((height as f32) / factor).ceil() as u32);
+        if self.built.as_ref().map(|b| b.format) != Some(format) {
+            self.built = Some(build(device, format, self.pipeline_cache.as_ref()));
+            self.size = (0, 0);
+        }
+        if self.size != size {
+            self.size = size;
+            self.a = Some(crate::render::sampled_target(device, "skia blur a", format, size.0, size.1));
+            self.b = Some(crate::render::sampled_target(device, "skia blur b", format, size.0, size.1));
+        }
+        let b = self.built.as_ref().unwrap();
+        let s = sigma / factor;
+        let clamp = self.clamp;
+        let put = |i: usize, dir: [f32; 2]| {
+            let mut bytes = [0u8; 16];
+            bytes[..4].copy_from_slice(&dir[0].to_le_bytes());
+            bytes[4..8].copy_from_slice(&dir[1].to_le_bytes());
+            bytes[8..12].copy_from_slice(&s.to_le_bytes());
+            bytes[12..16].copy_from_slice(&(clamp as u32 as f32).to_le_bytes());
+            queue.write_buffer(&b.params[i], 0, &bytes);
+        };
+        put(0, [0.0, 0.0]);
+        put(1, [1.0, 0.0]);
+        put(2, [0.0, 1.0]);
+        let (ta, tb) = (self.a.as_ref().unwrap(), self.b.as_ref().unwrap());
+        let bind = |view: &wgpu::TextureView, i: usize| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("skia blur"),
+                layout: &b.layout,
+                entries: &[
+                    wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(view) },
+                    wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&b.sampler) },
+                    wgpu::BindGroupEntry { binding: 2, resource: b.params[i].as_entire_binding() },
+                ],
+            })
+        };
+        crate::render::fullscreen_pass(encoder, "skia blur down", ta, &b.down, &bind(source, 0));
+        crate::render::fullscreen_pass(encoder, "skia blur x", tb, &b.gauss, &bind(ta, 1));
+        crate::render::fullscreen_pass(encoder, "skia blur y", ta, &b.gauss, &bind(tb, 2));
+        ta
+    }
+}
+
+impl Blur {
+    /// The last [`Blur::run`]'s result, kept until the next run (a blur of something drawn
+    /// once, sampled every frame).
+    pub fn output(&self) -> Option<&wgpu::TextureView> {
+        self.a.as_ref()
+    }
+}
+
+fn build(device: &wgpu::Device, format: wgpu::TextureFormat, cache: Option<&wgpu::PipelineCache>) -> Built {
+    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("skia blur"), source: wgpu::ShaderSource::Wgsl(SHADER.into()) });
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("skia blur"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry { binding: 1, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
+                count: None,
+            },
+        ],
+    });
+    let pipeline = |fs| crate::render::fullscreen_pipeline(device, &module, &layout, fs, format, None, cache);
+    let param = || device.create_buffer(&wgpu::BufferDescriptor { label: Some("skia blur"), size: 16, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+    Built {
+        format,
+        down: pipeline("down"),
+        gauss: pipeline("gauss"),
+        layout,
+        sampler: crate::render::linear_sampler(device),
+        params: [param(), param(), param()],
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The planned blur: where every step lands, in layer pixels.
+//
+// A σ above 4 is not blurred at full resolution: the layer is first downscaled (halvings about
+// the centre, then one step between ½ and 1, each a bilinear draw into an 8-bit surface),
+// blurred there with σ ≤ 4 by two 1-D passes of a linear-sampled discrete Gaussian, and the
+// low-resolution result is drawn back up with bilinear sampling. [`GraphitePlan`] is that
+// geometry (the rect rounding is Skia's, epsilon and all) and [`GraphiteBlur`] runs its passes.
+// Outside each surface is transparent; [`GraphitePlan::clamped`] pads each rescale surface by
+// one pixel filled with the edge and clamps every read instead.
+// ---------------------------------------------------------------------------------------------
+
+/// An integer rect, left, top, right, bottom.
+pub type IRect = [i32; 4];
+/// A float rect, left, top, right, bottom.
+pub type FRect = [f32; 4];
+
+/// Rect edges within this of a whole pixel round to it.
+const ROUND_EPSILON: f32 = 1e-3;
+/// The largest σ one blur pass takes at full resolution.
+pub const MAX_LINEAR_SIGMA: f32 = 4.0;
+
+/// The rect inset by a small epsilon, then rounded out.
+pub fn round_out(r: FRect) -> IRect {
+    [(r[0] + ROUND_EPSILON).floor() as i32, (r[1] + ROUND_EPSILON).floor() as i32, (r[2] - ROUND_EPSILON).ceil() as i32, (r[3] - ROUND_EPSILON).ceil() as i32]
+}
+
+/// A size rounded up, with the same epsilon.
+pub fn ceil_size(v: f32) -> i32 {
+    (v - ROUND_EPSILON).ceil() as i32
+}
+
+/// The intersection of two rects, `None` when empty.
+pub fn intersect(a: IRect, b: IRect) -> Option<IRect> {
+    let r = [a[0].max(b[0]), a[1].max(b[1]), a[2].min(b[2]), a[3].min(b[3])];
+    (r[0] < r[2] && r[1] < r[3]).then_some(r)
+}
+
+/// The rect grown by `dx` and `dy` on each side.
+pub fn outset(r: IRect, dx: i32, dy: i32) -> IRect {
+    [r[0] - dx, r[1] - dy, r[2] + dx, r[3] + dy]
+}
+
+fn width(r: FRect) -> f32 {
+    r[2] - r[0]
+}
+
+fn height(r: FRect) -> f32 {
+    r[3] - r[1]
+}
+
+fn to_f(r: IRect) -> FRect {
+    r.map(|v| v as f32)
+}
+
+/// How many rescale steps bring `scale` (the ratio of the target σ to the original) to 1: halvings, then a last step.
+pub fn downscale_step_count(scale: f32) -> u32 {
+    let n = (1.0 / scale).ceil() as i32;
+    // The smallest k with 2^k ≥ n.
+    let mut steps = if n <= 1 { 0 } else { 32 - ((n - 1) as u32).leading_zeros() };
+    if steps > 0 {
+        let final_step = scale * (1u32 << (steps - 1)) as f32;
+        let limit = if steps == 1 { 1.0 - ROUND_EPSILON } else { 0.9 };
+        if final_step >= limit {
+            steps -= 1;
+        }
+    }
+    steps
+}
+
+/// The rect's coordinates relative to its centre, scaled (a new pixel space centred on 0).
+fn scale_about_center(r: FRect, sx: f32, sy: f32) -> FRect {
+    let cx = if sx == 1.0 { 0.0 } else { 0.5 * r[0] + 0.5 * r[2] };
+    let cy = if sy == 1.0 { 0.0 } else { 0.5 * r[1] + 0.5 * r[3] };
+    [(r[0] - cx) * sx, (r[1] - cy) * sy, (r[2] - cx) * sx, (r[3] - cy) * sy]
+}
+
+/// One rescale iteration: the image over `from` (the previous step's space) drawn into the
+/// surface `pixels` of the new space, `from` mapping onto `to`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RescaleStep {
+    /// The image's bounds in the previous space.
+    pub from: FRect,
+    /// Those bounds in the new space.
+    pub to: FRect,
+    /// The surface drawn, `to` rounded out (clamp: outset by its 1-pixel border).
+    pub pixels: IRect,
+    /// The primary fill, `to` rounded out (`pixels` less the clamp border).
+    pub sample: IRect,
+}
+
+/// Where everything of one blur lands, in layer pixels.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GraphitePlan {
+    /// σ in layer pixels.
+    pub sigma: f32,
+    /// The blur's radius, `ceil(3σ)`.
+    pub radius: i32,
+    /// The part of the layer image that is rescaled.
+    pub src_rect: IRect,
+    /// The rescale's draws, in order (none when σ ≤ 4).
+    pub steps: Vec<RescaleStep>,
+    /// The low-resolution image: its pixels, in the last step's space (the layer itself when
+    /// there is no step).
+    pub low_pixels: IRect,
+    /// The space's float bounds that map onto `src_rect`.
+    pub low_bounds: FRect,
+    /// The σ the low-resolution image is blurred with.
+    pub low_sigma: f32,
+    /// That kernel's radius.
+    pub low_radius: i32,
+    /// The pixels of the layer the result is drawn into.
+    pub output: IRect,
+    /// Clamp the edges outward (else transparent).
+    pub clamp: bool,
+    /// Clamp: the source image's pixels (the layer), which the first rescale draw clamps to.
+    pub image: IRect,
+}
+
+impl GraphitePlan {
+    /// Plans a blur of an image covering `layer` (transparent outside) into a desired output
+    /// `desired` (the device clip, in layer pixels) with `sigma`.
+    pub fn new(layer: IRect, desired: IRect, sigma: f32) -> Option<GraphitePlan> {
+        Self::build(layer, desired, sigma, Vec::new())
+    }
+
+    /// Plans a clamped blur of an image covering `layer`: the input is cropped to its layer
+    /// bounds with clamp, so the edge pixels extend outward and the result fills the desired
+    /// output within the kernel's reach of the layer.
+    pub fn clamped(layer: IRect, desired: IRect, sigma: f32) -> Option<GraphitePlan> {
+        Self::build_clamped(layer, desired, sigma, Vec::new())
+    }
+
+    /// [`GraphitePlan::clamped`] into `self`, as [`GraphitePlan::update`].
+    pub fn update_clamped(&mut self, layer: IRect, desired: IRect, sigma: f32) -> bool {
+        let steps = std::mem::take(&mut self.steps);
+        match Self::build_clamped(layer, desired, sigma, steps) {
+            Some(plan) => {
+                *self = plan;
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn build_clamped(layer: IRect, desired: IRect, sigma: f32, mut steps: Vec<RescaleStep>) -> Option<GraphitePlan> {
+        steps.clear();
+        let radius = ceil_size(3.0 * sigma);
+        // The output is the kernel's reach around the layer, within the desired output.
+        let output = intersect(outset(layer, radius, radius), desired)?;
+        let sample_bounds = outset(output, radius, radius);
+        let scale = if sigma > MAX_LINEAR_SIGMA { MAX_LINEAR_SIGMA / sigma } else { 1.0 };
+        // The rescaled part is the layer ∩ the sampled bounds, or the closest edge row / column /
+        // corner of the layer when they are disjoint.
+        let src_rect = match intersect(layer, sample_bounds) {
+            Some(r) => r,
+            None => {
+                let edge = |lo: i32, hi: i32, dlo: i32, dhi: i32| if hi <= dlo { (hi - 1, hi) } else if lo >= dhi { (lo, lo + 1) } else { (lo.max(dlo), hi.min(dhi)) };
+                let (l, r) = edge(layer[0], layer[2], sample_bounds[0], sample_bounds[2]);
+                let (t, b) = edge(layer[1], layer[3], sample_bounds[1], sample_bounds[3]);
+                [l, t, r, b]
+            }
+        };
+        let src = to_f(src_rect);
+        let mut x_steps = downscale_step_count(scale);
+        let mut bounds = src;
+        while x_steps > 0 {
+            let sx = if x_steps > 1 { 0.5 } else { width(src) * scale / width(bounds) };
+            let sy = if x_steps > 1 { 0.5 } else { height(src) * scale / height(bounds) };
+            x_steps -= 1;
+            let to = scale_about_center(bounds, sx, sy);
+            let sample = round_out(to);
+            // Not decal: the surface is padded by a pixel draw_tiled_border fills.
+            steps.push(RescaleStep { from: bounds, to, pixels: outset(sample, 1, 1), sample });
+            bounds = to;
+        }
+        let (low_pixels, low_bounds) = match steps.last() {
+            Some(s) => (s.pixels, s.to),
+            None => (src_rect, src),
+        };
+        let inv_x = width(low_bounds) / width(src);
+        let low_sigma = (sigma * inv_x).min(MAX_LINEAR_SIGMA);
+        let low_radius = (3.0 * low_sigma).ceil() as i32;
+        Some(GraphitePlan { sigma, radius, src_rect, steps, low_pixels, low_bounds, low_sigma, low_radius, output, clamp: true, image: layer })
+    }
+
+    /// [`GraphitePlan::new`] into `self`, its steps' buffer reused (a blur planned every frame
+    /// allocates nothing once warm). False when nothing is drawn (`self` is then stale).
+    pub fn update(&mut self, layer: IRect, desired: IRect, sigma: f32) -> bool {
+        let steps = std::mem::take(&mut self.steps);
+        match Self::build(layer, desired, sigma, steps) {
+            Some(plan) => {
+                *self = plan;
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn build(layer: IRect, desired: IRect, sigma: f32, mut steps: Vec<RescaleStep>) -> Option<GraphitePlan> {
+        steps.clear();
+        let radius = ceil_size(3.0 * sigma);
+        let max_output = outset(layer, radius, radius);
+        let output_bounds = intersect(max_output, desired)?;
+        let sample_bounds = outset(output_bounds, radius, radius);
+        let scale = if sigma > MAX_LINEAR_SIGMA { MAX_LINEAR_SIGMA / sigma } else { 1.0 };
+        // The rescaled part is the visible layer ∩ the desired output.
+        let src_rect = intersect(layer, sample_bounds)?;
+        let src = to_f(src_rect);
+        let mut x_steps = downscale_step_count(scale);
+        let mut bounds = src;
+        while x_steps > 0 {
+            // Square σ: the x and y step counts and factors are the same.
+            let sx = if x_steps > 1 { 0.5 } else { width(src) * scale / width(bounds) };
+            let sy = if x_steps > 1 { 0.5 } else { height(src) * scale / height(bounds) };
+            x_steps -= 1;
+            let to = scale_about_center(bounds, sx, sy);
+            steps.push(RescaleStep { from: bounds, to, pixels: round_out(to), sample: round_out(to) });
+            bounds = to;
+        }
+        let (low_pixels, low_bounds) = match steps.last() {
+            Some(s) => (s.pixels, s.to),
+            None => (src_rect, src),
+        };
+        // The low-res image's transform back to the layer, its inverse scale: σ in its pixels.
+        let inv_x = width(low_bounds) / width(src);
+        let low_sigma = (sigma * inv_x).min(MAX_LINEAR_SIGMA);
+        let low_radius = (3.0 * low_sigma).ceil() as i32;
+        let plan = GraphitePlan { sigma, radius, src_rect, steps, low_pixels, low_bounds, low_sigma, low_radius, output: [0; 4], clamp: false, image: layer };
+        // srcRelativeOutput: the output bounds in low-res pixels, within the image's blur reach.
+        let o = to_f(output_bounds);
+        let a = plan.to_low([o[0], o[1]]);
+        let b = plan.to_low([o[2], o[3]]);
+        let rel = round_out([a[0] - low_pixels[0] as f32, a[1] - low_pixels[1] as f32, b[0] - low_pixels[0] as f32, b[1] - low_pixels[1] as f32]);
+        let dims = [0, 0, low_pixels[2] - low_pixels[0], low_pixels[3] - low_pixels[1]];
+        let reach = ceil_size(3.0 * low_sigma);
+        let rel = intersect(rel, outset(dims, reach, reach))?;
+        // The result's layer bounds: its image mapped back, within the desired output.
+        let a = plan.to_layer([(rel[0] + low_pixels[0]) as f32, (rel[1] + low_pixels[1]) as f32]);
+        let b = plan.to_layer([(rel[2] + low_pixels[0]) as f32, (rel[3] + low_pixels[1]) as f32]);
+        let output = intersect(round_out([a[0], a[1], b[0], b[1]]), desired)?;
+        Some(GraphitePlan { output, ..plan })
+    }
+
+    /// A layer point in the low-resolution image's space.
+    pub fn to_low(&self, p: [f32; 2]) -> [f32; 2] {
+        let s = to_f(self.src_rect);
+        let l = self.low_bounds;
+        [l[0] + (p[0] - s[0]) * (width(l) / width(s)), l[1] + (p[1] - s[1]) * (height(l) / height(s))]
+    }
+
+    /// A point of the low-resolution space in the layer.
+    pub fn to_layer(&self, p: [f32; 2]) -> [f32; 2] {
+        let s = to_f(self.src_rect);
+        let l = self.low_bounds;
+        [s[0] + (p[0] - l[0]) * (width(s) / width(l)), s[1] + (p[1] - l[1]) * (height(s) / height(l))]
+    }
+
+    /// The linear kernel of (`low_sigma`, `low_radius`): `low_radius + 1` taps, each an (offset,
+    /// weight) pair read with bilinear sampling.
+    pub fn linear_kernel(&self) -> Vec<(f32, f32)> {
+        linear_kernel(self.low_sigma, self.low_radius)
+    }
+}
+
+/// The normalised discrete Gaussian of `2·radius + 1` taps.
+pub fn gaussian_kernel(sigma: f32, radius: i32) -> Vec<f32> {
+    let denom = if radius > 0 { 1.0 / (2.0 * sigma * sigma) } else { 1.0 };
+    let full: Vec<f32> = (0..2 * radius + 1)
+        .map(|x| {
+            let t = (x - radius) as f32;
+            (-(t * t * denom)).exp()
+        })
+        .collect();
+    let sum: f32 = full.iter().sum();
+    let scale = 1.0 / sum;
+    full.into_iter().map(|w| w * scale).collect()
+}
+
+/// The linear-sampled form of the Gaussian kernel (two texels per tap), ordered as the shader reads it.
+pub fn linear_kernel(sigma: f32, radius: i32) -> Vec<(f32, f32)> {
+    let full = gaussian_kernel(sigma, radius);
+    let half_size = (radius + 1) as usize;
+    let half_radius = half_size / 2;
+    let mut kernel = vec![0f32; half_size];
+    let mut offsets = vec![0f32; half_size];
+    let mut low = half_radius as isize - 1;
+    let mut index = radius as usize;
+    let pair = |wi: f32, wj: f32| (wi + wj, wj / (wi + wj));
+    if radius & 1 == 1 {
+        let (w, o) = pair(full[index] * 0.5, full[index + 1]);
+        kernel[half_radius] = w;
+        offsets[half_radius] = o;
+        kernel[low as usize] = w;
+        offsets[low as usize] = -o;
+        index += 1;
+        low -= 1;
+    } else {
+        kernel[half_radius] = full[index];
+        offsets[half_radius] = 0.0;
+    }
+    index += 1;
+    for i in half_radius + 1..half_size {
+        let (w, o) = pair(full[index], full[index + 1]);
+        kernel[i] = w;
+        offsets[i] = o + (index as i32 - radius) as f32;
+        kernel[low as usize] = kernel[i];
+        offsets[low as usize] = -offsets[i];
+        index += 2;
+        low -= 1;
+    }
+    offsets.into_iter().zip(kernel).collect()
+}
+
+const GRAPHITE_SHADER: &str = r#"
+struct Down { src_bounds: vec4<f32>, dst_bounds: vec4<f32>, origins: vec4<f32>, pixels: vec4<f32>, src_size: vec4<f32>, clamp_rect: vec4<f32>, edge_rect: vec4<f32>, sample: vec4<f32>, mode: vec4<f32> };
+struct Blur1D { dir_size: vec4<f32>, taps: array<vec4<f32>, 8>, clamp_rect: vec4<f32>, mode: vec4<f32> };
+@group(0) @binding(0) var src: texture_2d<f32>;
+@group(0) @binding(1) var smp: sampler;
+@group(0) @binding(2) var<uniform> d: Down;
+@group(0) @binding(3) var<uniform> b: Blur1D;
+@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
+    let q = vec2<f32>(f32(i32(i & 1u) * 4 - 1), f32(i32(i >> 1u) * 4 - 1));
+    return vec4<f32>(q, 0.0, 1.0);
+}
+// One rescale draw: the destination pixel's centre in the new space, mapped back to the
+// previous space (RectToRect(from, to) inverted), sampled bilinearly. Outside the surface
+// `pixels`: nothing (the next step reads transparent there).
+@fragment fn down(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    let q = d.origins.zw + pos.xy;
+    if (any(q < d.pixels.xy) || any(q > d.pixels.zw)) { return vec4<f32>(0.0); }
+    let k = (d.src_bounds.zw - d.src_bounds.xy) / (d.dst_bounds.zw - d.dst_bounds.xy);
+    var p = d.src_bounds.xy + (q - d.dst_bounds.xy) * k;
+    if (d.mode.x > 0.5) {
+        // kClamp: the image shader clamps the read to the previous image (a linear filter's
+        // half-texel inset), and draw_tiled_border fills the 1-pixel border outside `sample`
+        // from the previous surface's outermost column / row (corners its corner texel).
+        p = clamp(p, d.clamp_rect.xy + 0.5, d.clamp_rect.zw - 0.5);
+        if (q.x < d.sample.x) { p.x = d.edge_rect.x + 0.5; }
+        if (q.x > d.sample.z) { p.x = d.edge_rect.z - 0.5; }
+        if (q.y < d.sample.y) { p.y = d.edge_rect.y + 0.5; }
+        if (q.y > d.sample.w) { p.y = d.edge_rect.w - 0.5; }
+    }
+    return textureSampleLevel(src, smp, (p - d.origins.xy) / d.src_size.xy, 0.0);
+}
+// kClamp's 1-D pass reads clamp-tiled to the low-resolution image (texel coordinates); the
+// first pass clamps both axes (its rows past the image are the edge row's, as Skia's second
+// pass clamps to the intermediate's rows), the second only its own.
+fn tap(c: vec2<f32>) -> vec4<f32> {
+    var q = c;
+    if (b.mode.x > 0.5) { q.x = clamp(q.x, b.clamp_rect.x + 0.5, b.clamp_rect.z - 0.5); }
+    if (b.mode.y > 0.5) { q.y = clamp(q.y, b.clamp_rect.y + 0.5, b.clamp_rect.w - 0.5); }
+    return textureSampleLevel(src, smp, q / b.dir_size.zw, 0.0);
+}
+// The 1-D linear-kernel blur effect: Σ weight · child.eval(coord + offset · dir).
+@fragment fn blur(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+    var sum = vec4<f32>(0.0);
+    for (var i = 0; i < 8; i = i + 1) {
+        let t = b.taps[i];
+        sum = sum + t.y * tap(pos.xy + t.x * b.dir_size.xy);
+        sum = sum + t.w * tap(pos.xy + t.z * b.dir_size.xy);
+    }
+    return sum;
+}
+"#;
+
+/// The transparent margin around each rescale surface (bilinear reads past its edge see 0).
+const STEP_MARGIN: i32 = 4;
+/// One slot's uniforms: `Down` at 0, `Blur1D` at 256.
+const PARAMS: u64 = 432;
+
+/// [`GraphitePlan`]'s passes on the GPU, on 8-bit premultiplied surfaces. Its targets, uniform
+/// buffers and bind groups are kept between runs: a blur run every frame (a filtered shape that
+/// moves) allocates nothing once its sizes have been seen.
+#[derive(Default)]
+pub struct GraphiteBlur {
+    /// The device's persistent pipeline cache, if the host has one.
+    pub pipeline_cache: Option<wgpu::PipelineCache>,
+    built: Option<GraphiteBuilt>,
+    targets: Vec<((u32, u32), wgpu::TextureView)>,
+    params: Vec<wgpu::Buffer>,
+    /// Per slot: the view it last read and its bind group.
+    binds: Vec<Option<(wgpu::TextureView, wgpu::BindGroup)>>,
+    sizes: Vec<(u32, u32)>,
+    /// The linear kernel's taps for (σ bits, radius).
+    taps: Option<((u32, i32), [f32; 32])>,
+}
+
+struct GraphiteBuilt {
+    down: wgpu::RenderPipeline,
+    blur: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+}
+
+/// A texture with the layer-space position of its texel (0, 0).
+pub struct Placed<'a> {
+    /// The texture.
+    pub view: &'a wgpu::TextureView,
+    /// Texel (0, 0)'s layer position.
+    pub origin: [i32; 2],
+    /// Its size in texels.
+    pub size: [u32; 2],
+}
+
+/// The blurred low-resolution image: texel (0, 0) at `origin` in the plan's low-resolution
+/// space ([`GraphitePlan::to_low`]), to be sampled bilinearly.
+pub struct Blurred<'a> {
+    /// The texture.
+    pub view: &'a wgpu::TextureView,
+    /// Texel (0, 0)'s position in the low-resolution space.
+    pub origin: [i32; 2],
+    /// Its size in texels.
+    pub size: [u32; 2],
+}
+
+/// The format of every blur surface: BGRA8, premultiplied.
+pub const GRAPHITE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+impl GraphiteBlur {
+    /// The bind group of `slot` reading `view` (made once per view and slot).
+    fn bind(&mut self, device: &wgpu::Device, slot: usize, view: &wgpu::TextureView) {
+        if self.binds.len() <= slot {
+            self.binds.resize_with(slot + 1, || None);
+        }
+        if self.binds[slot].as_ref().is_some_and(|(v, _)| v == view) {
+            return;
+        }
+        let built = self.built.as_ref().unwrap();
+        let params = &self.params[slot];
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("graphite blur"),
+            layout: &built.layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(view) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::Sampler(&built.sampler) },
+                wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: params, offset: 0, size: wgpu::BufferSize::new(144) }) },
+                wgpu::BindGroupEntry { binding: 3, resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding { buffer: params, offset: 256, size: wgpu::BufferSize::new(176) }) },
+            ],
+        });
+        self.binds[slot] = Some((view.clone(), group));
+    }
+
+    /// Runs `plan` on `source` (the layer image, transparent outside the plan's layer).
+    pub fn run<'s>(&'s mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, source: Placed<'_>, plan: &GraphitePlan) -> Blurred<'s> {
+        if self.built.is_none() {
+            self.built = Some(build_graphite(device, self.pipeline_cache.as_ref()));
+        }
+        // Surfaces: one per step, then the two blur passes on the low-res grid with room for
+        // the kernel's reach.
+        let reach = plan.low_radius + 2;
+        let low_origin = [plan.low_pixels[0] - reach, plan.low_pixels[1] - reach];
+        let low_size = [(plan.low_pixels[2] - plan.low_pixels[0] + 2 * reach) as u32, (plan.low_pixels[3] - plan.low_pixels[1] + 2 * reach) as u32];
+        // σ ≤ 4 has no rescale: the source is read on the low-res grid. A source placed
+        // otherwise is first copied there (an identity step: texel centres onto texel centres).
+        let src = plan.src_rect.map(|v| v as f32);
+        let copy = [RescaleStep { from: src, to: src, pixels: plan.src_rect, sample: plan.src_rect }];
+        let steps: &[RescaleStep] = if plan.steps.is_empty() && (source.origin, source.size) != (low_origin, low_size) { &copy } else { &plan.steps };
+        let n = steps.len();
+        self.sizes.clear();
+        for (i, s) in steps.iter().enumerate() {
+            self.sizes.push(if i + 1 == n { (low_size[0], low_size[1]) } else { ((s.pixels[2] - s.pixels[0] + 2 * STEP_MARGIN) as u32, (s.pixels[3] - s.pixels[1] + 2 * STEP_MARGIN) as u32) });
+        }
+        self.sizes.push((low_size[0], low_size[1]));
+        self.sizes.push((low_size[0], low_size[1]));
+        let count = self.sizes.len();
+        self.targets.truncate(count);
+        for i in 0..count {
+            let size = self.sizes[i];
+            if self.targets.get(i).map(|t| t.0) != Some(size) {
+                let view = crate::render::sampled_target(device, "graphite blur", GRAPHITE_FORMAT, size.0, size.1);
+                if i < self.targets.len() {
+                    self.targets[i] = (size, view);
+                } else {
+                    self.targets.push((size, view));
+                }
+            }
+        }
+        while self.params.len() < count {
+            self.params.push(device.create_buffer(&wgpu::BufferDescriptor { label: Some("graphite blur"), size: PARAMS, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }));
+        }
+        let put = |data: &mut [u8; PARAMS as usize], at: usize, v: &[f32]| {
+            for (k, f) in v.iter().enumerate() {
+                data[at + 4 * k..at + 4 * k + 4].copy_from_slice(&f.to_le_bytes());
+            }
+        };
+        let (mut prev_origin, mut prev_size) = (source.origin, source.size);
+        for i in 0..n {
+            let step = steps[i];
+            let margin = if i + 1 == n { reach } else { STEP_MARGIN };
+            let origin = [step.pixels[0] - margin, step.pixels[1] - margin];
+            let mut data = [0u8; PARAMS as usize];
+            put(&mut data, 0, &[
+                step.from[0], step.from[1], step.from[2], step.from[3],
+                step.to[0], step.to[1], step.to[2], step.to[3],
+                prev_origin[0] as f32, prev_origin[1] as f32, origin[0] as f32, origin[1] as f32,
+                step.pixels[0] as f32, step.pixels[1] as f32, step.pixels[2] as f32, step.pixels[3] as f32,
+                prev_size[0] as f32, prev_size[1] as f32, 0.0, 0.0,
+            ]);
+            if plan.clamp {
+                // The previous image: the source layer first (its border from srcRect), then
+                // each padded surface.
+                let (image, edge) = if i == 0 { (plan.image, plan.src_rect) } else { (steps[i - 1].pixels, steps[i - 1].pixels) };
+                let f = |r: IRect| r.map(|v| v as f32);
+                let (c, e, m) = (f(image), f(edge), f(step.sample));
+                put(&mut data, 80, &[c[0], c[1], c[2], c[3], e[0], e[1], e[2], e[3], m[0], m[1], m[2], m[3], 1.0, 0.0, 0.0, 0.0]);
+            }
+            queue.write_buffer(&self.params[i], 0, &data);
+            let input = if i == 0 { source.view.clone() } else { self.targets[i - 1].1.clone() };
+            self.bind(device, i, &input);
+            let built = self.built.as_ref().unwrap();
+            crate::render::fullscreen_pass(encoder, "graphite rescale", &self.targets[i].1, &built.down, &self.binds[i].as_ref().unwrap().1);
+            prev_origin = origin;
+            prev_size = [self.sizes[i].0, self.sizes[i].1];
+        }
+        // With no step the low-res image is the source; put it on the blur grid first.
+        let key = (plan.low_sigma.to_bits(), plan.low_radius);
+        if self.taps.as_ref().map(|t| t.0) != Some(key) {
+            let mut taps = [0f32; 32];
+            for (k, (o, w)) in plan.linear_kernel().into_iter().enumerate() {
+                taps[2 * k] = o;
+                taps[2 * k + 1] = w;
+            }
+            self.taps = Some((key, taps));
+        }
+        let taps = self.taps.as_ref().unwrap().1;
+        let low_index = if n == 0 { usize::MAX } else { n - 1 };
+        for (pass, dir) in [[1.0f32, 0.0], [0.0, 1.0]].into_iter().enumerate() {
+            let slot = count - 2 + pass;
+            // The blur's uniforms sit at offset 256 (the uniform offset alignment).
+            let mut data = [0u8; PARAMS as usize];
+            put(&mut data, 256, &[dir[0], dir[1], low_size[0] as f32, low_size[1] as f32]);
+            put(&mut data, 272, &taps);
+            if plan.clamp {
+                // The low-resolution image in the blur grid's texels.
+                let r = [reach as f32, reach as f32, (plan.low_pixels[2] - plan.low_pixels[0] + reach) as f32, (plan.low_pixels[3] - plan.low_pixels[1] + reach) as f32];
+                put(&mut data, 400, &[r[0], r[1], r[2], r[3], if pass == 0 { 1.0 } else { 0.0 }, 1.0, 0.0, 0.0]);
+            }
+            queue.write_buffer(&self.params[slot], 0, &data);
+            let input = if pass == 1 {
+                self.targets[slot - 1].1.clone()
+            } else if low_index != usize::MAX {
+                self.targets[low_index].1.clone()
+            } else {
+                assert_eq!((source.origin, source.size), (low_origin, low_size), "a σ ≤ 4 blur reads the source on the low-res grid");
+                source.view.clone()
+            };
+            self.bind(device, slot, &input);
+            let built = self.built.as_ref().unwrap();
+            crate::render::fullscreen_pass(encoder, "graphite blur 1d", &self.targets[slot].1, &built.blur, &self.binds[slot].as_ref().unwrap().1);
+        }
+        let _ = prev_size;
+        Blurred { view: &self.targets[count - 1].1, origin: low_origin, size: low_size }
+    }
+
+    /// [`GraphiteBlur::run`], then the result drawn back into `target` (texel (0, 0) at
+    /// `target_origin` in the layer, `target_size` texels): the low-resolution image sampled
+    /// bilinearly through its transform, over `plan.output`, transparent elsewhere. A blur drawn
+    /// once (an offscreen image) is then read 1:1.
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_into(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, source: Placed<'_>, plan: &GraphitePlan, target: &wgpu::TextureView, target_origin: [i32; 2], target_size: [u32; 2]) {
+        let (origin, size) = {
+            let out = self.run(device, queue, encoder, source, plan);
+            (out.origin, out.size)
+        };
+        let slot = self.sizes.len();
+        while self.params.len() <= slot {
+            self.params.push(device.create_buffer(&wgpu::BufferDescriptor { label: Some("graphite blur"), size: PARAMS, usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false }));
+        }
+        // The `down` draw with the spaces swapped: from the low-resolution bounds onto the source rect.
+        let (l, r) = (plan.low_bounds, plan.src_rect.map(|v| v as f32));
+        let o = plan.output.map(|v| v as f32);
+        let v = [
+            l[0], l[1], l[2], l[3],
+            r[0], r[1], r[2], r[3],
+            origin[0] as f32, origin[1] as f32, target_origin[0] as f32, target_origin[1] as f32,
+            o[0], o[1], o[2], o[3],
+            size[0] as f32, size[1] as f32, target_size[0] as f32, target_size[1] as f32,
+        ];
+        let mut data = [0u8; PARAMS as usize];
+        for (k, f) in v.iter().enumerate() {
+            data[4 * k..4 * k + 4].copy_from_slice(&f.to_le_bytes());
+        }
+        queue.write_buffer(&self.params[slot], 0, &data);
+        let input = self.targets[slot - 1].1.clone();
+        self.bind(device, slot, &input);
+        let built = self.built.as_ref().unwrap();
+        crate::render::fullscreen_pass(encoder, "graphite blur draw", target, &built.down, &self.binds[slot].as_ref().unwrap().1);
+    }
+}
+
+fn build_graphite(device: &wgpu::Device, cache: Option<&wgpu::PipelineCache>) -> GraphiteBuilt {
+    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("graphite blur"), source: wgpu::ShaderSource::Wgsl(GRAPHITE_SHADER.into()) });
+    let uniform = |binding| wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
+        count: None,
+    };
+    let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("graphite blur"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry { binding: 1, visibility: wgpu::ShaderStages::FRAGMENT, ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering), count: None },
+            uniform(2),
+            uniform(3),
+        ],
+    });
+    let pipeline = |fs| crate::render::fullscreen_pipeline(device, &module, &layout, fs, GRAPHITE_FORMAT, None, cache);
+    GraphiteBuilt { down: pipeline("down"), blur: pipeline("blur"), layout, sampler: crate::render::linear_sampler(device) }
+}
+
+#[cfg(test)]
+mod graphite_tests {
+    use super::*;
+
+    #[test]
+    fn step_counts_follow_skia() {
+        // σ 75: 4/75 → ceil(18.75) = 19 → 5 steps (the last 0.853 < 0.9 stays).
+        assert_eq!(downscale_step_count(4.0 / 75.0), 5);
+        // σ 50 (2×): 4/50 → 13 → 4 steps, the last 0.64.
+        assert_eq!(downscale_step_count(4.0 / 50.0), 4);
+        assert_eq!(downscale_step_count(1.0), 0);
+        // 0.95 of a single step is not near the identity (limit 0.999): one step.
+        assert_eq!(downscale_step_count(0.95), 1);
+        assert_eq!(downscale_step_count(0.9995), 0);
+    }
+
+    #[test]
+    fn the_linear_kernel_reproduces_the_gaussian() {
+        // σ 4 → radius 12 → 13 taps; read back with exact bilinear weights they are the
+        // 25-tap discrete Gaussian.
+        let k = linear_kernel(4.0, 12);
+        assert_eq!(k.len(), 13);
+        let full = gaussian_kernel(4.0, 12);
+        let mut back = vec![0f32; 25];
+        for (o, w) in k {
+            let x = o + 12.0;
+            let i = x.floor() as usize;
+            let f = x - i as f32;
+            back[i] += w * (1.0 - f);
+            if f > 0.0 {
+                back[i + 1] += w * f;
+            }
+        }
+        for (a, b) in back.iter().zip(&full) {
+            assert!((a - b).abs() < 1e-6, "{a} {b}");
+        }
+        assert!((full.iter().sum::<f32>() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn the_plan_of_the_fractal_glass_blur() {
+        // A 3× pane (40, 306, 380, 606) pt = (120, 918, 1140, 1818) px; a circle at (180, 270)
+        // r 100 → (240, 510, 840, 1110) px; σ 75 → R 225.
+        let desired = [120, 918, 1140, 1818];
+        let layer = intersect(outset(desired, 225, 225), round_out([240.0, 510.0, 840.0, 1110.0])).unwrap();
+        assert_eq!(layer, [240, 693, 840, 1110]);
+        let plan = GraphitePlan::new(layer, desired, 75.0).unwrap();
+        assert_eq!(plan.radius, 225);
+        assert_eq!(plan.steps.len(), 5);
+        assert_eq!(plan.src_rect, layer);
+        // Halvings about the centre (540, 901.5), then 0.853.
+        assert_eq!(plan.steps[0].to, [-150.0, -104.25, 150.0, 104.25]);
+        assert_eq!(plan.steps[0].pixels, [-150, -105, 150, 105]);
+        assert!((plan.steps[4].to[2] - plan.steps[4].to[0] - 600.0 * 4.0 / 75.0).abs() < 1e-3);
+        assert!((plan.low_sigma - 4.0).abs() < 1e-5);
+        assert_eq!(plan.low_radius, 12);
+        // A layer point maps there and back.
+        let p = plan.to_layer(plan.to_low([500.0, 900.0]));
+        assert!((p[0] - 500.0).abs() < 1e-3 && (p[1] - 900.0).abs() < 1e-3);
+        // The output stays within the pane.
+        assert!(plan.output[0] >= 120 && plan.output[3] <= 1818);
+    }
+
+    #[test]
+    fn the_clamp_plan_of_the_bottom_sheet_photo() {
+        // A cover photo at the canvas's pixels (1260 × 2736), clamp blur σ 30: 4/30 → 3 steps
+        // (½, ½, 0.533), each padded by a pixel.
+        let full = [0, 0, 1260, 2736];
+        let plan = GraphitePlan::clamped(full, full, 30.0).unwrap();
+        assert!(plan.clamp);
+        assert_eq!(plan.output, full);
+        assert_eq!(plan.src_rect, full);
+        assert_eq!(plan.steps.len(), 3);
+        for s in &plan.steps {
+            assert_eq!(s.pixels, outset(s.sample, 1, 1));
+            assert_eq!(s.sample, round_out(s.to));
+        }
+        assert!((plan.low_sigma - 4.0).abs() < 1e-4);
+        assert_eq!(plan.low_pixels, plan.steps[2].pixels);
+        // The decal plan of the same is unchanged by the clamp path.
+        let decal = GraphitePlan::new(full, full, 30.0).unwrap();
+        assert!(!decal.clamp);
+        assert_eq!(decal.steps.iter().map(|s| s.pixels).collect::<Vec<_>>(), plan.steps.iter().map(|s| s.sample).collect::<Vec<_>>());
+    }
+
+    /// The clamp path on the CPU, one channel, 8-bit surfaces: the rescale draws (clamped
+    /// reads, tiled border), the clamp-tiled 1-D passes, the bilinear draw back.
+    fn clamp_reference(img: &[f32], w: i32, h: i32, plan: &GraphitePlan) -> Vec<f32> {
+        struct Img { r: IRect, px: Vec<f32> }
+        let q8 = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() / 255.0;
+        let texel = |im: &Img, x: i32, y: i32| {
+            let x = x.clamp(im.r[0], im.r[2] - 1);
+            let y = y.clamp(im.r[1], im.r[3] - 1);
+            im.px[((y - im.r[1]) * (im.r[2] - im.r[0]) + x - im.r[0]) as usize]
+        };
+        let bilerp = |im: &Img, p: [f32; 2]| {
+            let (x, y) = (p[0] - 0.5, p[1] - 0.5);
+            let (x0, y0) = (x.floor(), y.floor());
+            let (fx, fy) = (x - x0, y - y0);
+            let (x0, y0) = (x0 as i32, y0 as i32);
+            let a = texel(im, x0, y0) * (1.0 - fx) + texel(im, x0 + 1, y0) * fx;
+            let b = texel(im, x0, y0 + 1) * (1.0 - fx) + texel(im, x0 + 1, y0 + 1) * fx;
+            a * (1.0 - fy) + b * fy
+        };
+        let mut im = Img { r: [0, 0, w, h], px: img.to_vec() };
+        for (i, st) in plan.steps.iter().enumerate() {
+            let edge = if i == 0 { plan.src_rect } else { im.r };
+            let r = st.pixels;
+            let mut px = Vec::new();
+            for y in r[1]..r[3] {
+                for x in r[0]..r[2] {
+                    let q = [x as f32 + 0.5, y as f32 + 0.5];
+                    let k = [(st.from[2] - st.from[0]) / (st.to[2] - st.to[0]), (st.from[3] - st.from[1]) / (st.to[3] - st.to[1])];
+                    let mut p = [st.from[0] + (q[0] - st.to[0]) * k[0], st.from[1] + (q[1] - st.to[1]) * k[1]];
+                    p[0] = p[0].clamp(im.r[0] as f32 + 0.5, im.r[2] as f32 - 0.5);
+                    p[1] = p[1].clamp(im.r[1] as f32 + 0.5, im.r[3] as f32 - 0.5);
+                    if x < st.sample[0] { p[0] = edge[0] as f32 + 0.5; }
+                    if x >= st.sample[2] { p[0] = edge[2] as f32 - 0.5; }
+                    if y < st.sample[1] { p[1] = edge[1] as f32 + 0.5; }
+                    if y >= st.sample[3] { p[1] = edge[3] as f32 - 0.5; }
+                    px.push(q8(bilerp(&im, p)));
+                }
+            }
+            im = Img { r, px };
+        }
+        // Two passes of the linear kernel, clamp-tiled to the low-res image.
+        let taps = plan.linear_kernel();
+        for dir in [[1.0f32, 0.0], [0.0, 1.0]] {
+            let r = im.r;
+            let mut px = Vec::new();
+            for y in r[1]..r[3] {
+                for x in r[0]..r[2] {
+                    let c = [x as f32 + 0.5, y as f32 + 0.5];
+                    let sum: f32 = taps.iter().map(|(o, wt)| {
+                        let p = [(c[0] + o * dir[0]).clamp(r[0] as f32 + 0.5, r[2] as f32 - 0.5), (c[1] + o * dir[1]).clamp(r[1] as f32 + 0.5, r[3] as f32 - 0.5)];
+                        wt * bilerp(&im, p)
+                    }).sum();
+                    px.push(q8(sum));
+                }
+            }
+            im = Img { r, px };
+        }
+        // Drawn back: each layer pixel's centre in the low-res space, bilinear (the result
+        // reaches a pixel past the output, so no clamp is visible inside it).
+        let mut out = vec![0f32; (w * h) as usize];
+        for y in plan.output[1]..plan.output[3] {
+            for x in plan.output[0]..plan.output[2] {
+                out[(y * w + x) as usize] = q8(bilerp(&im, plan.to_low([x as f32 + 0.5, y as f32 + 0.5])));
+            }
+        }
+        out
+    }
+
+    #[cfg(feature = "repo-tests")]
+    #[test]
+    fn the_clamp_blur_runs_skias_clamp_path() {
+        let gpu = match exact_gpu::fixture::device() {
+            Ok(gpu) => gpu,
+            Err(error) => return eprintln!("{error}; skipped"),
+        };
+        let (device, queue) = (&gpu.device, &gpu.queue);
+        let (w, h) = (90u32, 70u32);
+        // A bright frame and a dark centre with a diagonal: the edges extend outward.
+        let value = |x: u32, y: u32| if x < 6 || y < 4 || x >= 84 { 0.95 } else if (x + y) % 17 < 3 { 0.6 } else { 0.1 + 0.004 * x as f32 };
+        let mut grey = Vec::new();
+        let mut bytes = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let v = (value(x, y) * 255.0).round();
+                grey.push(v / 255.0);
+                bytes.extend_from_slice(&[v as u8, v as u8, v as u8, 255]);
+            }
+        }
+        let extent = wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 };
+        let texture = device.create_texture(&wgpu::TextureDescriptor { label: None, size: extent, mip_level_count: 1, sample_count: 1, dimension: wgpu::TextureDimension::D2, format: GRAPHITE_FORMAT, usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST, view_formats: &[] });
+        queue.write_texture(texture.as_image_copy(), &bytes, wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(w * 4), rows_per_image: None }, extent);
+        let src = texture.create_view(&Default::default());
+        let out = device.create_texture(&wgpu::TextureDescriptor { label: None, size: extent, mip_level_count: 1, sample_count: 1, dimension: wgpu::TextureDimension::D2, format: GRAPHITE_FORMAT, usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC, view_formats: &[] });
+        let out_view = out.create_view(&Default::default());
+        let full = [0, 0, w as i32, h as i32];
+        let mut blur = GraphiteBlur::default();
+        for sigma in [3.0f32, 9.0, 21.0] {
+            let plan = GraphitePlan::clamped(full, full, sigma).unwrap();
+            let mut encoder = device.create_command_encoder(&Default::default());
+            blur.run_into(device, queue, &mut encoder, Placed { view: &src, origin: [0, 0], size: [w, h] }, &plan, &out_view, [0, 0], [w, h]);
+            queue.submit([encoder.finish()]);
+            let px = exact_gpu::fixture::read(&gpu, &out).unwrap();
+            let want = clamp_reference(&grey, w as i32, h as i32, &plan);
+            let mut worst = 0i32;
+            let mut hist = [0usize; 4];
+            for y in 0..h {
+                for x in 0..w {
+                    let a = px.at(x, y);
+                    let d = (a[0] as i32 - (want[(y * w + x) as usize] * 255.0).round() as i32).abs();
+                    hist[d.min(3) as usize] += 1;
+                    worst = worst.max(d);
+                    assert_eq!(a[3], 255, "clamp keeps the edges opaque at ({x}, {y}), σ {sigma}");
+                }
+            }
+            // The GPU's bilinear weights and 8-bit stores round apart from f32 by a level, rarely
+            // two after three rescale draws (σ 9: 3 of 6300 pixels, interior).
+            assert!(worst <= 2 && hist[2] * 1000 < (w * h) as usize, "σ {sigma}: worst {worst} levels from the reference, {hist:?}");
+        }
+    }
+
+}

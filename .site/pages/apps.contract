@@ -1,0 +1,145 @@
+// /apps: Patterns, and the story of making it, in the owner's own words (2026-11-27), under its ghost. Inside the site's grid (the header's Container) and on the page's own scroll. The
+// stage, centred, live: the ghost beside his tilted board, as in the app's intro (the site's GPU module, gpu/:
+// Patterns' `ghost` surface); a tap on him pokes him. Under him the app's name and its stores, then the story, a paragraph at a time (the home's entrance and cadence: blur-in and rise, 80-890 ms, web/head.css). Desktop first.
+use md from "../components/responsive.contract"
+use Container from "../components/shell.contract"
+use PatternsAppStoreQr, PatternsPlayQr from "../components/qr.contract"
+
+fn patternsAppStore(): string = "https://apps.apple.com/app/id6809395535"
+fn patternsPlay(): string = "https://play.google.com/store/apps/details?id=com.chesspatterns.app"
+// William Candillon's "Chess" episode of "Can it be done in React Native?" (the link react-native-chessboard's README
+// gives) and his profile.
+fn chessEpisode(): string = "https://youtu.be/JulJJxbP_T0"
+fn wcandillon(): string = "https://x.com/wcandillon"
+fn chessboardRepo(): string = "https://github.com/enzomanuelmangano/react-native-chessboard"
+// Kadi Kraman's talk "Building for yourself" (the owner's reference).
+fn buildingForYourself(): string = "https://youtu.be/pk9txCdg7qU"
+// The stage: Patterns' intro, the ghost beside his tilted board (the `ghost` surface). With no screen height the
+// surface takes the canvas as its whole stage (gpu/src/ghost.rs stage_box), so nothing is cut: the scene, its glow
+// and the ghost are laid out in the canvas, sized here (never scaled by a transform: the host measures it).
+fn STAGE_W(): number = 640
+fn STAGE_H(): number = 460
+// The intro's position (patterns-exact puzzle_intro, the smothered mate) as the surface reads it, and no cue.
+fn introBoard(): string = "br..........brbkbpbp........bpbp....bp..................wn......................................wpwp......wpwpwp....wr......wk.."
+fn introCue(): string = "-1,-1,-1,-1,-1,arc,0"
+fn absn(x: number): number = max(x, 0 - x)
+
+// The story reads as the site's articles do: 16 px on 28 px, the body colour (components/markdown.contract).
+style Body
+  font-size=16 line-height="28px" color="var(--color-text-body)" margin=0
+style Inline
+  color="var(--color-text-secondary)" text-decoration-line="underline"
+// A repo's name: in italics, in the story's own font (a monospace face reads foreign inside a paragraph).
+style Repo
+  font-style="italic" white-space="nowrap"
+
+// One store link: the logo and the store's name, in a quiet pill (/demos's StarsPill's fill and hover).
+component StoreLink
+  slot
+  props
+    href: string
+    label: string
+  view
+    link href=href target="_blank" rel="noopener noreferrer" aria-label=label display="flex" align-items="center" gap=8
+      height=44 padding-left=18 padding-right=20 border-radius=9999 background-color="rgb(255 255 255 / 0.06)"
+      color="var(--color-text-primary)" font-size="0.9375rem" font-weight=500 white-space="nowrap"
+      transition="background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)" data-motion="colors-200"
+      :hover
+        background-color = "rgb(255 255 255 / 0.1)"
+      children
+
+component AppsPage
+  // A tap that lands on the ghost pokes him, as in the app's intro: a count and its point, in the canvas's points.
+  state pokeN = 0
+  state pokeX = 0
+  state pokeY = 0
+  state downX = 0
+  state downAt = 0
+  action down(e: PointerEvent)
+    downX = e.clientX
+    downAt = performanceNow()
+  action up(e: PointerEvent)
+    if absn(e.clientX - downX) < 12 and performanceNow() - downAt <= 500
+      let f = frame("apps-ghost")
+      pokeN = pokeN + 1
+      pokeX = e.clientX - f.x
+      pokeY = e.clientY - f.y
+  view
+    Container()
+      column align-items="center" margin-top=-34 margin-bottom=96
+        canvas surface=ghost("dark", 0, -9, 0, pokeN, pokeX, pokeY, introBoard(), "", introCue(), -1, 0, 0, 0, 0, 1, 0, 0, 0, 0)
+          id="apps-ghost" testId="apps-ghost" pointerdown=down pointerup=up cursor="pointer" aria-label="Patterns' ghost beside his board"
+          // As wide as the column allows, at most STAGE_W, its height in proportion: the surface lays the scene out in
+          // whatever size the canvas is, so on a narrow window the ghost and his board shrink, never cut.
+          width=`min(${STAGE_W()}px, 100%)` height=`calc(min(${STAGE_W()}px, 100vw - 48px) * ${STAGE_H() / STAGE_W()})`
+          flex-shrink=0 data-motion="apps-stage"
+          // The surface's one child: its scheme probe (gpu/src/ghost.rs), as in the app's intro.
+          view position="absolute" left=0 top=0 width=2 height=2 background-color="var(--color-background)" pointer-events="none" aria-hidden=true
+        // Under the ghost: the app's name and its stores; then the story.
+        column align-items="center" margin-top=-49 data-motion="blur-in rise" data-delay="80"
+          text "Patterns: Chess Puzzles" role="heading" aria-level=1 font-size="1.875rem" line-height="2.25rem" font-weight=600
+            color="var(--color-text-heading)"
+        // The stores. From 1024 px with a mouse, hovering (or focusing) one shows its QR code under it, to scan with the
+        // phone: /demos's TestFlight card and its motion (web/head.css d-tf, d-tf-qr), centred under the button.
+        // Over the story: while its paragraphs come in (each a layer of its own for its blur), a QR code would go under them.
+        row gap=12 margin-top=20 margin-bottom=72 position="relative" z-index=2 data-motion="blur-in rise" data-delay="170"
+          view position="relative" data-motion="d-tf"
+            StoreLink(href=patternsAppStore(), label="Patterns on the App Store")
+              svg width=15 height=15 viewBox="0 0 16 16" fill="currentColor" aria-hidden=true flex-shrink=0
+                path d="M11.182.008C11.148-.03 9.923.023 8.857 1.18c-1.066 1.156-.902 2.482-.878 2.516s1.52.087 2.475-1.258.762-2.391.728-2.43m3.314 11.733c-.048-.096-2.325-1.234-2.113-3.422s1.675-2.789 1.698-2.854-.597-.79-1.254-1.157a3.7 3.7 0 0 0-1.563-.434c-.108-.003-.483-.095-1.254.116-.508.139-1.653.589-1.968.607-.316.018-1.256-.522-2.267-.665-.647-.125-1.333.131-1.824.328-.49.196-1.422.754-2.074 2.237-.652 1.482-.311 3.83-.067 4.56s.625 1.924 1.273 2.796c.576.984 1.34 1.667 1.659 1.899s1.219.386 1.843.067c.502-.308 1.408-.485 1.766-.472.357.013 1.061.154 1.782.539.571.197 1.111.115 1.652-.105.541-.221 1.324-1.059 2.238-2.758q.52-1.185.473-1.282"
+              text "App Store"
+            view position="absolute" left="calc(50% - 92px)" top="100%" margin-top=10 padding=12 border-radius=16
+              background-color="#16171b" pointer-events="none" aria-hidden=true data-motion="d-tf-qr"
+              PatternsAppStoreQr(size=160)
+          view position="relative" data-motion="d-tf"
+            StoreLink(href=patternsPlay(), label="Patterns on Google Play")
+              svg width=14 height=14 viewBox="0 0 16 16" fill="currentColor" aria-hidden=true flex-shrink=0
+                path d="M14.222 9.374c1.037-.61 1.037-2.137 0-2.748L11.528 5.04 8.32 8l3.207 2.96zm-3.595 2.116L7.583 8.68 1.03 14.73c.201 1.029 1.36 1.61 2.303 1.055zM1 13.396V2.603L6.846 8zM1.03 1.27l6.553 6.05 3.044-2.81L3.333.215C2.39-.341 1.231.24 1.03 1.27"
+              text "Google Play"
+            view position="absolute" left="calc(50% - 92px)" top="100%" margin-top=10 padding=12 border-radius=16
+              background-color="#16171b" pointer-events="none" aria-hidden=true data-motion="d-tf-qr"
+              PatternsPlayQr(size=160)
+        column width="100%" max-width="42rem" align-self="flex-start" gap=20
+          column data-motion="blur-in rise" data-delay="250"
+            text "I've been trying to make this app for five years." class=Body
+          column data-motion="blur-in rise" data-delay="350"
+            text "If you have ever tried to build a side project, you might already know how it goes. It comes in waves." class=Body
+          column data-motion="blur-in rise" data-delay="470"
+            text "Every year there's a moment when you get back to it, and think: this time I'll build it. Then work, life, and the difficulty of it get in the way." class=Body
+          column data-motion="blur-in rise" data-delay="530"
+            p class=Body
+              text "On GitHub I have five repos with almost the same name. "
+              text "chess-app" class=Repo
+              text ", "
+              text "new-chess-app" class=Repo
+              text ", "
+              text "prototype-chess" class=Repo
+              text " and so on. A graveyard of good intentions."
+          column data-motion="blur-in rise" data-delay="590"
+            p class=Body
+              text "I've always had a strong passion for chess and then in 2021 I watched the "
+              text "“Chess – Can it be done in React Native?”" href=chessEpisode() target="_blank" class=Inline data-motion="footer-link hover-primary"
+              text " episode from "
+              text "@wcandillon" href=wcandillon() target="_blank" class=Inline data-motion="footer-link hover-primary"
+              text ". Right after watching it, I got excited and started "
+              text "react-native-chessboard" href=chessboardRepo() target="_blank" class=Inline data-motion="footer-link hover-primary"
+              text " and found out that a smooth chessboard is one of the hardest things I've ever tried to build."
+          column data-motion="blur-in rise" data-delay="650"
+            p class=Body
+              text "Years later I watched Kadi Kraman's talk "
+              text "“Building for yourself”" href=buildingForYourself() target="_blank" class=Inline data-motion="footer-link hover-primary"
+              text ". And something clicked again: I didn't have to beat anyone. I just had to make the app I wanted to use."
+          column data-motion="blur-in rise" data-delay="710"
+            text "Today AI has made creating software tremendously simpler. But making something that matters to someone feels harder than ever. What I could do on this journey was aim for something that matters to me." class=Body
+          column data-motion="blur-in rise" data-delay="770"
+            text "If you're into React Native, you might spot Skia, WebGPU, and Reanimated living on every single screen." class=Body
+          column data-motion="blur-in rise" data-delay="830"
+            text "If you're into chess, consider giving it a try and leaving a review :)" class=Body
+          // Who tells it.
+          row align-items="center" gap=12 margin-top=12 data-motion="blur-in rise" data-delay="890"
+            image "/assets/pfp.png" width=40 height=40 border-radius=20 alt="" aria-hidden=true
+            column
+              text "Enzo Manuel Mangano" font-size="0.875rem" line-height="1.25rem" font-weight=500 color="var(--color-text-primary)"
+              link href="https://x.com/reactiive_" target="_blank" rel="noopener noreferrer" font-size="0.8125rem" line-height="1.25rem"
+                color="var(--color-text-tertiary)" width="fit-content" data-motion="footer-link hover-primary"
+                text "@reactiive_"

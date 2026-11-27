@@ -10,6 +10,7 @@ use DemosPage, DemosSim from "./pages/demos.contract"
 use InspirationsPage from "./pages/inspirations.contract"
 use CoursePage from "./pages/course.contract"
 use DemosAppPage from "./pages/demos-app.contract"
+use AppsPage from "./pages/apps.contract"
 use Page from "./components/markdown.contract"
 use Card, ArticleList, ArticlePage from "./pages/articles.contract"
 use Me, SiteConfig, Sent, SignInDialog, FeedbackDialog, ProfilePage, ManageSubscriptionPage, CancelDialog, Toast from "./components/account/account.contract"
@@ -25,6 +26,8 @@ routes nav
   demoPost "/demos/:demo" render=build activate=interaction pages=demoPostSlugs()
   inspirations "/inspirations" render=build activate=interaction
   demosApp "/demos-app" render=build activate=interaction
+  // The apps I make, starting with Patterns (pages/apps.contract).
+  apps "/apps" render=build activate=idle
   course "/course" render=build activate=interaction
   // The content (tools/gen-content.ts, docs/progress-content.md).
   articles "/articles" render=build activate=interaction
@@ -328,6 +331,10 @@ component App
                 head title="Course | Reactiive" description="Reanimate.dev — the complete guide to React Native animations, from the basics to advanced techniques."
                   image="/og/main.png" canonical="/course"
                 CoursePage()
+              else if e.name == "apps"
+                head title="Apps | Reactiive" description="Patterns: Chess Puzzles, an app made with React Native, and the story of making it."
+                  image="/og/main.png" canonical="/apps"
+                AppsPage()
               else if e.name == "demosApp"
                 head title="Demos (TestFlight) | Reactiive" description="Get 100+ animations built with Exact, Rust and WebGPU on your iPhone through the TestFlight beta."
                   image="/og/demos.png" canonical="/demos-app"

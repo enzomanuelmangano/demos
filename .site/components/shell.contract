@@ -10,7 +10,7 @@ shape NavItem
   href: string
   route: string
 
-fn navItems(): NavItem[] = [NavItem(name="Articles", href="/articles", route="articles"), NavItem(name="Demos", href="/demos", route="demos")]
+fn navItems(): NavItem[] = [NavItem(name="Articles", href="/articles", route="articles"), NavItem(name="Demos", href="/demos", route="demos"), NavItem(name="Apps", href="/apps", route="apps")]
 
 // Past 10 px of the page's scroll the bar takes the page's colour and a hairline, over 300 ms, as the reference's: the
 // head script web/reveal.js sets `html[data-scrolled]` and web/head.css colours `[data-motion~=bar]`, so the look needs
