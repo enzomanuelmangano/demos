@@ -150,6 +150,8 @@ for (const [path, generated, norm] of files) {
     for (const u of la) if (!lb.has(u)) lines.push(`  - not in ours: ${u}`);
     // The demo posts are listed by ours only (live left them out; D25): named, accepted, and all must be there.
     if (path === '/sitemap.xml') for (const d of loadDemoPosts()) { const u = `${SITE_URL}/demos/${d.slug}`; if (lb.has(u)) lb.delete(u); else lines.push(`  - demo post not listed: ${u}`); }
+    // So are the pages new on this site (metadata.ts newPage), until the live site has them.
+    if (path === '/sitemap.xml') for (const p of allPages().filter((p) => p.newPage)) { const u = `${SITE_URL}${p.path}`; if (lb.has(u)) { if (!la.has(u)) lb.delete(u); } else lines.push(`  - new page not listed: ${u}`); }
     for (const u of lb) if (!la.has(u)) lines.push(`  + only in ours: ${u}`);
     if (!lines.length && locs(l.body).filter((u) => la.has(u)).join() !== locs(text).filter((u) => la.has(u)).join()) lines.push('  ~ same URLs, different order');
     if (!lines.length && path === '/rss.xml') { const x = a.filter((s, i) => s !== b[i]); if (x.length) lines.push(`  ~ ${x.length} lines differ, first: ${x[0]}`); }
