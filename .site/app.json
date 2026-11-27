@@ -86,6 +86,11 @@
               ]
             }
           }
+        },
+        {
+          "script": {
+            "text": "(function(){if(!window.GPUAdapter||!GPUAdapter.prototype.requestDevice)return;var R=GPUAdapter.prototype.requestDevice,done=false;GPUAdapter.prototype.requestDevice=function(){return R.apply(this,arguments).then(function(d){d.lost.then(function(i){if(done||!i||i.reason==='destroyed')return;var t=Date.now(),k='exact-gpu-reload:',n=0,m=/exact-gpu-reload:(\\d+):(\\d+)/.exec(window.name||'');if(m&&t-Number(m[2])<60000)n=Number(m[1]);if(n>=2)return;done=true;window.name=(window.name||'').replace(/exact-gpu-reload:\\d+:\\d+/,'')+k+(n+1)+':'+t;location.reload();});return d;});};})();"
+          }
         }
       ]
     }
