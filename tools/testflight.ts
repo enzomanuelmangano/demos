@@ -3,7 +3,7 @@
 // App Store Connect app 6670311735, team W3N4N47454; .legacy/eas.json submit.production):
 //   1. the icon is the committed assets/icon.png (the spiral with the number of demos: tools/app-icon.ts, run when
 //      the number changes; this refuses an icon older than demos.contract's count);
-//   2. an App Store archive (`exact.mjs ios --device --archive`) with app.json's `id` set to com.reactiive.app for the
+//   2. an App Store archive (`exact.mjs ios --device --archive`) with app.json's `app.id` set to com.reactiive.app for the
 //      build only (put back after: development builds keep com.reactiive.demos.exact), the version from package.json
 //      (EXACT_VERSION) and the build number (EXACT_BUILD_NUMBER);
 //   3. the upload with `eas submit` (the App Store Connect key EAS keeps for the project), from a scratch EAS project
@@ -61,11 +61,18 @@ try {
     build = String(Number(m[1]) + 1);
   }
   console.log(`testflight: Demos ${version} (${build}) as ${STORE_ID}`);
+  // The bundle id is app.json's `app.id` (the top-level `id` is the web manifest's, not the bundle's).
   const app = JSON.parse(original);
-  app.id = STORE_ID;
+  app.app = { ...app.app, id: STORE_ID };
   writeFileSync(appJson, JSON.stringify(app, null, 2) + '\n');
   run('bun', ['exact.mjs', 'ios', '--device', '--archive', ipa], { env: { EXACT_VERSION: version, EXACT_BUILD_NUMBER: build, EXACT_NON_EXEMPT_ENCRYPTION: 'false' } });
   writeFileSync(appJson, original);
+  // The archive must be the store's app: a bundle id the profile does not cover is refused by Apple after upload.
+  const scratchIpa = mkdtempSync(join(tmpdir(), 'demos-ipa-'));
+  run('unzip', ['-q', ipa, 'Payload/*.app/Info.plist', '-d', scratchIpa]);
+  const plist = spawnSync('/bin/sh', ['-c', `/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${scratchIpa}"/Payload/*.app/Info.plist`], { encoding: 'utf8' }).stdout.trim();
+  rmSync(scratchIpa, { recursive: true, force: true });
+  if (plist !== STORE_ID) throw new Error(`testflight: the archive's bundle id is ${plist}, not ${STORE_ID}: not submitted`);
   run('npx', [...EAS, 'submit', '-p', 'ios', '--path', ipa, '--profile', 'production', '--non-interactive'], { cwd: eas });
   console.log(`testflight: Demos ${version} (${build}) submitted. EAS's counter is not moved: pass --build-number ${Number(build) + 1} next time, or set it with eas build:version:set.`);
 } finally {
