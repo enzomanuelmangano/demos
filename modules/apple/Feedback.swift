@@ -1,4 +1,9 @@
-// Feedback from the phone, in any open demo: shake, or long-press with two fingers, to open a sheet
+// In any open demo, a shake opens the Layers sheet: the Inspiration sheet's look (InspirationBody, a
+// detent fitted to it, the system's material), one line on how a demo is built and "Show layers",
+// which lays the skeleton over the demo (LayerSkeleton.swift); a shake while it shows takes it away.
+//
+// Feedback from the phone (a development build that knows the Mac: the launch argument or
+// feedback-host/mac.json below, or a simulator): long-press with two fingers to open a sheet
 // with the demo's name and slug, a screenshot taken at the trigger (tap it to mark a point), a note
 // and quick commands. Each command is one `POST /phone` to the Mac's feedback server, which appends
 // it to inbox.jsonl. The Mac is found by the launch argument `-feedbackHost <ip[:port]>`, else by
@@ -24,6 +29,8 @@ enum PhoneFeedback {
     static func attach(_ card: DemoCardView) {
         installShake()
         self.card = card
+        // The two-finger feedback sheet is for a build that can reach the Mac; the shipped app has none.
+        guard FeedbackQueue.shared.configured else { return }
         guard let window = card.window, !presses.contains(ObjectIdentifier(window)) else { return }
         presses.insert(ObjectIdentifier(window))
         let press = UILongPressGestureRecognizer(target: Trigger.shared, action: #selector(Trigger.pressed(_:)))
@@ -46,6 +53,42 @@ enum PhoneFeedback {
         _ = Once.done
     }
 
+    /// A shake: the skeleton away if it shows, else the Layers sheet.
+    static func shake() {
+        if LayerSkeleton.dismiss() { return }
+        if open, sheet.map({ $0.viewIfLoaded?.window == nil && !$0.isBeingPresented }) ?? true { open = false }
+        guard !open, !recording else { return }
+        guard let card, let window = card.window, var top = window.rootViewController else { return }
+        let slug = card.slug.isEmpty ? (LaunchSession.current?.slug ?? "") : card.slug
+        guard !slug.isEmpty else { return }
+        while let next = top.presentedViewController, !next.isBeingDismissed { top = next }
+        open = true
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let model = InspirationModel()
+        model.title = "Layers"
+        model.story = "See how this demo is built: what Contract lays out, what Rust draws on the GPU, and what runs as native Swift."
+        model.label = "Show layers"
+        model.symbol = "square.3.layers.3d"
+        model.bottom = window.safeAreaInsets.bottom
+        var host: UIHostingController<InspirationBody>?
+        let body = InspirationBody(model: model, action: { host?.dismiss(animated: true) { showLayers() } })
+        host = UIHostingController(rootView: body)
+        guard let host else { return }
+        sheet = host
+        // As InspirationSheet: no safe area inside, the system's sheet material, a detent fitted to the content.
+        host.safeAreaRegions = []
+        host.view.backgroundColor = .clear
+        host.modalPresentationStyle = .pageSheet
+        if let controller = host.sheetPresentationController {
+            let fitted = host.sizeThatFits(in: CGSize(width: window.bounds.width, height: .greatestFiniteMagnitude)).height
+            controller.detents = [.custom(identifier: .init("fitted")) { context in min(fitted, context.maximumDetentValue) }]
+            controller.prefersGrabberVisible = true
+            controller.delegate = Trigger.shared
+        }
+        top.present(host, animated: true)
+    }
+
+    /// The two-finger long press (a build that reaches the Mac): the feedback sheet.
     static func trigger() {
         if LayerSkeleton.dismiss() { return }
         if open, sheet.map({ $0.viewIfLoaded?.window == nil && !$0.isBeingPresented }) ?? true { open = false }
@@ -112,11 +155,11 @@ enum PhoneFeedback {
 extension UIApplication {
     @objc func demosFeedbackSendEvent(_ event: UIEvent) {
         demosFeedbackSendEvent(event)
-        if event.type == .motion, event.subtype == .motionShake { PhoneFeedback.trigger() }
+        if event.type == .motion, event.subtype == .motionShake { PhoneFeedback.shake() }
     }
 }
 
-private final class Trigger: NSObject, UIGestureRecognizerDelegate, UIAdaptivePresentationControllerDelegate {
+private final class Trigger: NSObject, UIGestureRecognizerDelegate, UISheetPresentationControllerDelegate {
     static let shared = Trigger()
     @objc func pressed(_ g: UILongPressGestureRecognizer) {
         if g.state == .began { PhoneFeedback.trigger() }
@@ -385,6 +428,15 @@ final class FeedbackQueue {
     }
 
     var pending: Int { files().count }
+
+    /// A Mac to send to: the launch argument, the baked feedback-host/mac.json, or a simulator (the Mac itself).
+    var configured: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return hosts().contains { $0.0 != "127.0.0.1" } || UserDefaults.standard.string(forKey: "feedbackHost")?.isEmpty == false
+        #endif
+    }
 
     private func files() -> [URL] {
         ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [])
