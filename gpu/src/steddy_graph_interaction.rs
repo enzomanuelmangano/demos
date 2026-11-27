@@ -2,13 +2,13 @@
 //! that difficulty's scores: the input is the index, 0 Light, 1 Standard, 2 Pro.
 //! Each score is its own spring, so the line settles with its own motion.
 //!
-//! A spring frame allocates nothing: the dashes and the label are built once, and the line's path
+//! A spring frame allocates nothing: the dashes are built once, and the line's path
 //! is rewritten in place in a buffer kept between frames.
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
 use motion::{Spring, GENTLE};
-use draw2d::{point, Canvas, Color, Font, Paint, Path, PathBuffer, Point, Renderer};
+use draw2d::{point, Canvas, Color, Paint, Path, PathBuffer, Point, Renderer};
 
 /// Scores for Light, Standard and Pro.
 const SCORES: [[f64; 27]; 3] = [
@@ -21,8 +21,6 @@ const PADDING: f32 = 50.0;
 /// Scale top, 10 above the best score.
 const MAX: f32 = 110.0;
 const LINE_SCORE: f32 = 70.0;
-/// The label font: an ASCII subset of SF Compact Rounded Medium.
-static SF_COMPACT_ROUNDED: &[u8] = include_bytes!("../../assets/fonts/SF-Compact-Rounded-Medium.otf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
@@ -118,8 +116,6 @@ impl Surface for Highlight {
 
 fn graph() -> Graph {
     Graph {
-        font: Font::new(SF_COMPACT_ROUNDED, 18.0),
-        label: format!("{} pts", LINE_SCORE as i32),
         scores: std::array::from_fn(|_| Spring::default()),
         points: Vec::with_capacity(28),
         ..Default::default()
@@ -130,8 +126,6 @@ fn graph() -> Graph {
 struct Graph {
     difficulty: Option<usize>,
     scores: [Spring; 27],
-    font: Option<Font>,
-    label: String,
     points: Vec<Point>,
     /// The line's path, rewritten each frame in place.
     path: PathBuffer,
@@ -195,9 +189,7 @@ impl Graph {
             self.dashes = Some((width, dash_path(width, line_y)));
         }
         c.draw_path(&self.dashes.as_ref().unwrap().1, &Paint::fill(Color::rgba8(0, 0, 0, 255).alpha(0.1)));
-        if let Some(font) = &self.font {
-            c.draw_text(&self.label, width - 80.0, line_y + 40.0, font, &Paint::fill(Color::rgba8(0, 0, 0, 255).alpha(0.5)));
-        }
+        // The line's label ("70 pts") is the Contract's text over the canvas (an Apple font is never bundled).
         let distance = (width - PADDING * 2.0) / (self.scores.len() - 1) as f32;
         let y = |s: f64| HEIGHT * (1.0 - s as f32 / MAX);
         self.points.clear();

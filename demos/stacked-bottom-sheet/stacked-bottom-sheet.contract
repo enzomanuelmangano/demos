@@ -176,7 +176,7 @@ component StackedBottomSheet
             // The label sits in its own box above the glass: text painted by the capsule itself
             // would lie under the glass view.
             view position="relative" z-index=1 pointer-events="none"
-              text "Show stacked tray" color="#FFFFFF" font-family="SF-Pro-Rounded-Bold" font-size=17
+              text "Show stacked tray" color="#FFFFFF" font-family="ui-rounded" font-weight=700 font-size=17 letter-spacing=-0.374
                 line-height="22px"
       // Dismissed sheets are no longer drawn.
       for key, i in keys key=key
@@ -271,12 +271,12 @@ component SheetContent
     column flex=1 opacity=(ghost ? 0 : 1) pointer-events=(ghost ? "none" : "auto")
       if cfg == 0 or cfg == 1
         column flex=1 align-items="center" justify-content="center"
-          text (cfg == 0 ? "You can put here" : "Whatever you want") font-family="SF-Pro-Rounded-Bold"
-            font-size=20 color="#000000"
+          text (cfg == 0 ? "You can put here" : "Whatever you want") font-family="ui-rounded" font-weight=700
+            font-size=20 letter-spacing=-0.361 color="#000000"
       if cfg == 2
         // The text and the wand button.
         row flex=1 align-items="center" justify-content="center" gap=10
-          text "Let's add a bit of magic" font-family="SF-Pro-Rounded-Bold" font-size=20
+          text "Let's add a bit of magic" font-family="ui-rounded" font-weight=700 font-size=20 letter-spacing=-0.361
             color="#000000"
           view pointer-events="auto" display="flex" flex-direction="column"
             PressableScale(press=magic)

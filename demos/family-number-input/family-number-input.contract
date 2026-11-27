@@ -127,5 +127,5 @@ component FamilyNumberInput
                 column flex-grow=1 align-items="center" justify-content="center"
                   aria-label=(k >= 0 ? `${k}` : "") testId=`key-${k}`
                   if k >= 0
-                    text `${k}` font-family="SF-Pro-Rounded-Bold" font-size=30 color="#ffffff"
+                    text `${k}` font-family="ui-rounded" font-weight=700 font-size=30 color="#ffffff"
                       text-align="center"
