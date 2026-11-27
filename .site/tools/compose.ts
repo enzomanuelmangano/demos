@@ -134,6 +134,12 @@ for (const page of ['index.html', 'shell.html']) {
   if (!html.includes('<title>Demos</title>')) throw new Error(`compose: demos ${page} has no <title>Demos</title>`);
   writeFileSync(p, html.replace('<title>Demos</title>', () => head + bridgeScript));
 }
+// Sentry in the framed Demos app too (tools/observability.ts, when the build has the DSN): its pages are another
+// document, so the site's own script never sees what fails in there (the demos' GPU and wasm above all).
+{
+  const r = spawnSync('bun', [join(site, 'tools/observability.ts'), join(staticDir, MOUNT.slice(1))], { cwd: site, stdio: 'inherit' });
+  if (r.status !== 0) throw new Error('compose: observability on the demos app failed');
+}
 
 if (existsSync(join(staticDir, 'signed-out.html'))) throw new Error('compose: signed-out.html collides with the site build');
 writeFileSync(join(staticDir, 'signed-out.html'), '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta http-equiv="refresh" content="0;url=/demos"><title>Reactiive</title><body style="background:#0c0c0e"><a href="/demos">Demos</a>\n');
