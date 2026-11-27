@@ -1,6 +1,13 @@
 // Per-route head tags, identical to the live site's: the reference's pageMetadata() (src/lib/metadata.ts) over its root
 // layout metadata, as Next.js renders them (same tags, same order). One typed place: add a page kind here, nowhere else.
 import { COURSE_DESCRIPTION, DEMOS_APP_DESCRIPTION, DEMOS_DESCRIPTION, DOC_TITLES, HOME_DESCRIPTION, loadArticles, OG, SITE_AUTHOR_NAME, SITE_DESCRIPTION, SITE_NAME, SITE_TWITTER, SITE_URL, THEME_COLOR, ARTICLES_DESCRIPTION, RSS_URL, titleCase, loadDemoPosts, type OgImage } from './site.ts';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+// The icon's link names its bytes (as live's `/favicon.ico?favicon.<hash>.ico` did): a browser that kept another
+// icon for the site (or none, from the minutes the domain moved) asks for this one again. head-diff ignores the query.
+const FAVICON_HREF = `/favicon.ico?v=${createHash('sha256').update(readFileSync(join(import.meta.dir, '../../public/favicon.ico'))).digest('hex').slice(0, 10)}`;
 
 export type Tag = { tag: 'title'; text: string } | { tag: 'meta' | 'link'; attrs: Record<string, string> };
 
@@ -84,7 +91,7 @@ export function headTags(m: PageMetadata): Tag[] {
     t.push(meta('name', 'twitter:image:width', String(OG.home.width)));
     t.push(meta('name', 'twitter:image:height', String(OG.home.height)));
   }
-  t.push({ tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '48x48', type: 'image/x-icon' } });
+  t.push({ tag: 'link', attrs: { rel: 'icon', href: FAVICON_HREF, sizes: '48x48', type: 'image/x-icon' } });
   t.push({ tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/pwa/apple-touch-icon/apple-touch-icon-180.png', sizes: '180x180' } });
   t.push(meta('http-equiv', 'X-UA-Compatible', 'IE=edge'));
   return t;
