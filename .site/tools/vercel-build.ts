@@ -106,7 +106,10 @@ if (existsSync(join(cached, 'dist'))) {
     run('set -o pipefail; dnf install -y -q nss nspr atk at-spi2-atk at-spi2-core cups-libs libdrm libxkbcommon libXcomposite libXdamage libXrandr libXfixes libXext libX11 libxcb mesa-libgbm pango cairo alsa-lib expat dbus-libs libxshmfence 2>&1 | tail -5 || echo "warning: dnf could not install every Chrome library"');
   }
   step('the demos web build');
-  run('bun .site/tools/demos-web/build.ts', { cwd: ROOT, env: { EXACT: exact, CARGO_TARGET_DIR: join(CACHE, 'demos-web-target'), DEMOS_WEB_SCRATCH: '/tmp/demos-web-src' } });
+  // Its Rust target dir stays out of the kept cache: it is GBs, and Vercel keeps a build cache only while it is under
+  // its limit (5 GB), so with it nothing was kept and every build compiled Exact's tools and this app again. Once
+  // the artifact is cached (below) no build needs the target dir.
+  run('bun .site/tools/demos-web/build.ts', { cwd: ROOT, env: { EXACT: exact, CARGO_TARGET_DIR: '/tmp/demos-web-target', DEMOS_WEB_SCRATCH: '/tmp/demos-web-src' } });
   if (!existsSync(join(artifact, 'dist'))) throw new Error(`the demos build left no ${artifact}/dist`);
   // One artifact in the cache: the newest.
   rmSync(join(CACHE, 'demos-web'), { recursive: true, force: true });
@@ -133,5 +136,8 @@ if (env.SKIP_HEAD_PARITY !== '1') { step('head parity with the live site'); run(
 // ---- 3. compose ----------------------------------------------------------------------------------------------------
 step('compose');
 run('bun tools/compose.ts', { env: { SITE_ORIGIN: env.SITE_ORIGIN || 'https://reactiive.io' } });
-console.log(`cache: ${out(`du -sh ${CACHE} 2>/dev/null | cut -f1`)} in .vercel/cache (kept between builds)`);
+// The kept cache, by part: it must stay under Vercel's build cache limit (5 GB), or none of it is kept.
+rmSync(join(CACHE, 'demos-web-target'), { recursive: true, force: true }); // where earlier builds kept the demos' target dir
+console.log(`cache: ${out(`du -sh ${CACHE} 2>/dev/null | cut -f1`)} in .vercel/cache (kept between builds; Vercel keeps it under 5 GB):`);
+console.log(out(`du -sh ${CACHE}/* 2>/dev/null || true`));
 console.log(`\nvercel-build: .vercel/output ready (${readdirSync(join(SITE, '.vercel/output/static')).length} entries at the root) in ${Math.round((Date.now() - t0) / 1000)} s`);
