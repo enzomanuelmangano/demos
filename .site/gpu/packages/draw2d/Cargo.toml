@@ -1,0 +1,32 @@
+# @shopify/react-native-skia's drawing, for the Demos app's GPU surfaces: antialiased as Skia
+# Graphite does it (analytic rects/rrects/circles, 4x MSAA paths and clips), tessellated on the
+# CPU, on the module's own device, with no compute and no indirect dispatch (the iOS Simulator
+# has none).
+[package]
+name = "draw2d"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+readme = "README.md"
+keywords = ["2d", "graphics", "wgpu", "lyon", "vector"]
+categories = ["graphics", "rendering"]
+description = "2D drawing on lyon and wgpu with the same shapes and numbers as the Skia API the RN demos use: antialiased paths, shapes, gradients, blurs and text, no Skia code"
+publish = false
+
+[lib]
+name = "draw2d"
+
+[features]
+# The parity tests' switch, kept from the demos repo; this copy has no tests (they read the demos app's fonts).
+repo-tests = []
+
+[dependencies]
+# The one GPU API, from crates.io. exact-gpu re-exports this same crate (it resolves to one wgpu in
+# any build that also links exact-gpu), so draw2d's `wgpu` is the `exact_gpu::wgpu` a surface sees.
+# No backend features: the host picks them (exact-gpu turns on metal, vulkan, dx12 or webgpu).
+wgpu = { version = "30", default-features = false, features = ["wgsl"] }
+lyon = "1.0"
+ttf-parser = { version = "0.25", default-features = false, features = ["std", "variable-fonts", "gvar-alloc", "opentype-layout", "apple-layout"] }
+bytemuck = { version = "1", features = ["derive"] }
+# Decodes the JPEGs a demo bundles (`Image::from_jpeg`), pure Rust, the same on the web.
+zune-jpeg = "0.5"

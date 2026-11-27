@@ -123,6 +123,7 @@ export function allPages(): PageMetadata[] {
     }),
     { path: '/inspirations', title: 'Inspirations', description: 'The blogs, docs and creators whose work shaped Reactiive.io.', image: card(OG.home) },
     { path: '/demos-app', title: 'Demos (TestFlight)', description: DEMOS_APP_DESCRIPTION, image: card(OG.demos) },
+    { path: '/apps', title: 'Apps', description: 'Patterns: solve chess puzzles and learn the tactical patterns behind them, a few minutes a day.', image: card(OG.home) },
     { path: '/course', title: 'Course', description: COURSE_DESCRIPTION, image: card(OG.home) },
     { path: '/docs', title: SITE_NAME, layoutOnly: true },
     ...Object.entries(DOC_TITLES).map(([slug, title]): PageMetadata => ({ path: `/docs/${slug}`, title, image: card(OG.home) })),

@@ -54,6 +54,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-delay="350"]{--motion-delay:350ms}[data-delay="450"]{--motion-delay:450ms}[data-delay="470"]{--motion-delay:470ms}
 [data-delay="530"]{--motion-delay:530ms}[data-delay="550"]{--motion-delay:550ms}[data-delay="590"]{--motion-delay:590ms}
 [data-delay="650"]{--motion-delay:650ms}
+/* /apps's story (pages/apps.contract): the home's cadence carried on, 60 ms apart. */
+[data-delay="710"]{--motion-delay:710ms}[data-delay="770"]{--motion-delay:770ms}[data-delay="830"]{--motion-delay:830ms}[data-delay="890"]{--motion-delay:890ms}
 /* /demos's hero: the header's 1000 px perspective, and the title and subtitle lifted toward the reader
    (translateZ: 3D, which a Contract box does not take). */
 [data-motion~=perspective]{perspective:1000px}
@@ -162,6 +164,14 @@ main:has([data-motion~=post-sim]),main:has([data-motion~=post-sim]) ~ *{padding-
 @media (min-width:1024px) and (hover:hover) and (pointer:fine){
 [data-motion~=d-tf-qr]{display:block;z-index:45;visibility:hidden;opacity:0;scale:.96;translate:0 -4px;transform-origin:24px 0;box-shadow:0 0 0 1px rgb(255 255 255 / .08),0 16px 40px rgb(0 0 0 / .55);transition:opacity 150ms ease-out,scale 150ms ease-out,translate 150ms ease-out,visibility 0s 150ms}
 [data-motion~=d-tf]:is(:hover,:focus-within) [data-motion~=d-tf-qr]{visibility:visible;opacity:1;scale:1;translate:none;transition:opacity 200ms cubic-bezier(.23,1,.32,1) 60ms,scale 200ms cubic-bezier(.23,1,.32,1) 60ms,translate 200ms cubic-bezier(.23,1,.32,1) 60ms,visibility 0s 60ms}
+/* /apps: a store's QR code on a chessboard (tools/qr.ts). On each hover the board shows and resolves into the code a diagonal at a time from a1 to h8: a square's modules fade in and settle as its tint fades. At rest, the code alone. */
+@keyframes qr-tint{from{opacity:1}to{opacity:0}}
+@keyframes qr-mod{from{opacity:0;scale:.9}to{opacity:1;scale:1}}
+[data-motion~=qr-board]>*>*{--s:calc(7 - var(--r,0) + var(--f,0))}[data-motion~=qr-board]>:nth-child(2){--r:1}[data-motion~=qr-board]>:nth-child(3){--r:2}[data-motion~=qr-board]>:nth-child(4){--r:3}[data-motion~=qr-board]>:nth-child(5){--r:4}[data-motion~=qr-board]>:nth-child(6){--r:5}[data-motion~=qr-board]>:nth-child(7){--r:6}[data-motion~=qr-board]>:nth-child(8){--r:7}[data-motion~=qr-board]>*>:nth-child(2){--f:1}[data-motion~=qr-board]>*>:nth-child(3){--f:2}[data-motion~=qr-board]>*>:nth-child(4){--f:3}[data-motion~=qr-board]>*>:nth-child(5){--f:4}[data-motion~=qr-board]>*>:nth-child(6){--f:5}[data-motion~=qr-board]>*>:nth-child(7){--f:6}[data-motion~=qr-board]>*>:nth-child(8){--f:7}
+[data-motion~=qr-board]>*>*>:first-child{opacity:0}[data-motion~=qr-board]>*>*>:not(:first-child){transform-box:fill-box;transform-origin:center}
+[data-motion~=d-tf]:is(:hover,:focus-within) [data-motion~=qr-board]>*>*>:first-child{animation:qr-tint 360ms ease-out calc(var(--s) * 34ms + 100ms) backwards}
+[data-motion~=d-tf]:is(:hover,:focus-within) [data-motion~=qr-board]>*>*>:not(:first-child){animation:qr-mod 360ms cubic-bezier(.23,1,.32,1) calc(var(--s) * 34ms + 100ms) backwards}
+@media (prefers-reduced-motion:reduce){[data-motion~=d-tf]:is(:hover,:focus-within) [data-motion~=qr-board]>*>*>*{animation:none}}
 }
 @media (min-width:1024px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){[data-motion~=d-tf-qr]{scale:1;translate:none}}
 /* /demos's Sponsor heart (pages/demos.contract StarsPill): one heartbeat per hover or keyboard focus (the animation
@@ -290,3 +300,7 @@ html[data-still] [data-motion~=sim-still]{opacity:1}
 @media (prefers-reduced-motion:reduce){[data-motion~=sim-still]{transition:none}}
 /* /course's title (pages/course.contract): Exact refuses a clamp() line-height, so its two steps are here. */
 [data-motion~=course-title]{line-height:36px}@media (min-width:768px){[data-motion~=course-title]{line-height:40px}}
+
+
+/* /apps's stage (pages/apps.contract): the glow has not quite reached the page's colour at the canvas's top edge; it fades in over its first 18 %. */
+[data-motion~=apps-stage]{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 18%);mask-image:linear-gradient(to bottom,transparent,#000 18%)}

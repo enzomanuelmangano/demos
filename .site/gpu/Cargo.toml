@@ -1,0 +1,36 @@
+# The site's GPU module (2026-11-26): Patterns' (patterns-exact gpu/, copied whole, its own
+# history and comments), here for /apps, which draws the intro's ghost beside his board (`ghost`) live. Exact
+# generates the workspace at .exact/gpu/ (docs/recipes/gpu-module.md). Only `ghost` is registered (src/lib.rs).
+[package]
+name = "reactiive-site-gpu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Patterns' GPU module: the intro's ghost, page turn and board, the checkmate wave and the offer card's mascot (ports of the RN app's three.js and Skia code)"
+publish = false
+build = "build.rs"
+workspace = "../.exact/gpu"
+
+[lib]
+name = "reactiive_site_gpu"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+exact-gpu = { workspace = true }
+gltf = { version = "1.4.1", default-features = false, features = ["utils", "names"] }
+glam = "0.30"
+bytemuck = "1"
+png = "0.18"
+# RNGH's pan velocity (the pager's release) and Reanimated's interpolateColor (the dots).
+gestures = { path = "packages/gestures" }
+motion = { path = "packages/motion" }
+# Journey's road (journey.rs): its tiles, dots and blurred polygons.
+draw2d = { path = "packages/draw2d" }
+
+[build-dependencies]
+exact-gpu-reflect = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys.workspace = true

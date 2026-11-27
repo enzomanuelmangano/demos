@@ -15,3 +15,5 @@
 /.content-gen.next/
 /.content-gen.old/
 /assets/content/
+/rust-toolchain.toml
+/.cargo/config.toml
