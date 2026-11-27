@@ -21,6 +21,8 @@ export type PageMetadata = {
   jsonLd?: { kind: 'home' } | { kind: 'article'; slug: string } | { kind: 'demo'; slug: string };
   /** Plain title (no ' | Reactiive'): the home page, and layoutOnly pages. */
   plainTitle?: boolean;
+  /** A page the live site does not have yet (new on this site): the head parity check has nothing to compare it with. */
+  newPage?: boolean;
 };
 
 const abs = (u: string) => (u.startsWith('http') ? u : `${SITE_URL}${u}`);
@@ -123,7 +125,7 @@ export function allPages(): PageMetadata[] {
     }),
     { path: '/inspirations', title: 'Inspirations', description: 'The blogs, docs and creators whose work shaped Reactiive.io.', image: card(OG.home) },
     { path: '/demos-app', title: 'Demos (TestFlight)', description: DEMOS_APP_DESCRIPTION, image: card(OG.demos) },
-    { path: '/apps', title: 'Apps', description: 'Patterns: solve chess puzzles and learn the tactical patterns behind them, a few minutes a day.', image: card(OG.home) },
+    { path: '/apps', title: 'Apps', description: 'Patterns: solve chess puzzles and learn the tactical patterns behind them, a few minutes a day.', image: card(OG.home), newPage: true },
     { path: '/course', title: 'Course', description: COURSE_DESCRIPTION, image: card(OG.home) },
     { path: '/docs', title: SITE_NAME, layoutOnly: true },
     ...Object.entries(DOC_TITLES).map(([slug, title]): PageMetadata => ({ path: `/docs/${slug}`, title, image: card(OG.home) })),

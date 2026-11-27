@@ -123,6 +123,8 @@ for (const m of allPages()) {
   const [l, o] = [await fetchLive(lp), await ours(m.path === '/404' ? '/this-page-does-not-exist' : m.path, htmlFile(m.path))];
   const want = m.path === '/404' ? 404 : 200;
   if (o === undefined) { if (strict) report(m.path, ['  not built']); else skipped.push(m.path); continue; }
+  // A page new on this site: the live site answers 404 for it until the site goes live; nothing to compare.
+  if (m.newPage && l.status === 404) { console.log(`new  ${m.path} (not on the live site yet)`); continue; }
   const lines = l.status === want ? diffHeads(expectedLive(m, headOf(l.body)), headOf(o)) : [`  live answers ${l.status}, expected ${want}`];
   report(m.path, lines);
 }
