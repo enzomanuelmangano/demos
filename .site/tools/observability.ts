@@ -26,7 +26,7 @@ import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const SITE = resolve(import.meta.dir, '..');
-const dist = resolve(SITE, process.argv[2] ?? 'dist');
+const dist = resolve(SITE, process.argv.slice(2).find((a) => !a.startsWith('--')) ?? 'dist');
 const fromEnvLocal = (name: string) => {
   const p = join(SITE, '.env.local');
   if (!existsSync(p)) return '';
@@ -34,7 +34,8 @@ const fromEnvLocal = (name: string) => {
   return m ? m[1].trim() : '';
 };
 const setting = (name: string) => process.env[name] ?? fromEnvLocal(name);
-const AMPLITUDE_KEY = setting('EXPO_PUBLIC_AMPLITUDE_API_KEY');
+// --sentry-only (the framed Demos app, tools/compose.ts): no Amplitude, whose sessions the site's page already counts.
+const AMPLITUDE_KEY = process.argv.includes('--sentry-only') ? '' : setting('EXPO_PUBLIC_AMPLITUDE_API_KEY');
 const SENTRY_DSN = setting('EXPO_PUBLIC_SENTRY_DSN');
 // The release is the deployed commit (Vercel's, else the checkout's), so an event names the build it came from; the
 // environment tells a preview deploy from production (Vercel's VERCEL_ENV), so previews never mix into production.
