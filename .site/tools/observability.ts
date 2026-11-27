@@ -37,8 +37,10 @@ const fromEnvLocal = (name: string) => {
   return m ? m[1].trim() : '';
 };
 const setting = (name: string) => process.env[name] ?? fromEnvLocal(name);
-// --sentry-only (the framed Demos app, tools/compose.ts): no Amplitude, whose sessions the site's page already counts.
-const AMPLITUDE_KEY = process.argv.includes('--sentry-only') ? '' : setting('EXPO_PUBLIC_AMPLITUDE_API_KEY');
+// --sentry-only (the framed Demos app, tools/compose.ts): no Amplitude, whose sessions the site's page already counts,
+// and no tracing at all: errors only, so nothing of Sentry ever touches the app's own requests (its wasm, its assets).
+const SENTRY_ONLY = process.argv.includes('--sentry-only');
+const AMPLITUDE_KEY = SENTRY_ONLY ? '' : setting('EXPO_PUBLIC_AMPLITUDE_API_KEY');
 const SENTRY_DSN = setting('EXPO_PUBLIC_SENTRY_DSN');
 // The release is the deployed commit (Vercel's, else the checkout's), so an event names the build it came from; the
 // environment tells a preview deploy from production (Vercel's VERCEL_ENV), so previews never mix into production.
@@ -70,8 +72,8 @@ function clean(e){if(e.transaction)e.transaction=scrub(e.transaction);if(e.reque
 (e.breadcrumbs||[]).forEach(function(b){if(b.message)b.message=scrub(b.message);if(b.data){['url','to','from'].forEach(function(k){if(b.data[k])b.data[k]=scrub(b.data[k]);});}});
 (e.spans||[]).forEach(function(sp){if(sp.description)sp.description=scrub(sp.description);if(sp.data){['url','http.url','http.query'].forEach(function(k){if(sp.data[k])sp.data[k]=scrub(sp.data[k]);});}});
 if(e.contexts&&e.contexts.trace&&e.contexts.trace.data){['url','http.url','http.query'].forEach(function(k){if(e.contexts.trace.data[k])e.contexts.trace.data[k]=scrub(e.contexts.trace.data[k]);});}return e;}
-S.init({dsn:D,debug:dev,tracesSampleRate:dev?1:0.1,release:${JSON.stringify(RELEASE)},environment:dev?'development':${JSON.stringify(ENVIRONMENT)},enabled:!local,initialScope:{tags:{surface:location.pathname.indexOf('/demos/app')===0?'demos-app':'site'}},
-integrations:[S.browserTracingIntegration()],tracePropagationTargets:[],
+S.init({dsn:D,debug:dev,${SENTRY_ONLY ? '' : 'tracesSampleRate:dev?1:0.1,'}release:${JSON.stringify(RELEASE)},environment:dev?'development':${JSON.stringify(ENVIRONMENT)},enabled:!local,initialScope:{tags:{surface:location.pathname.indexOf('/demos/app')===0?'demos-app':'site'}},
+${SENTRY_ONLY ? 'integrations:[],' : 'integrations:[S.browserTracingIntegration()],tracePropagationTargets:[],'}
 beforeSendTransaction:function(e){return clean(e);},
 beforeSend:function(e){var x=e.exception&&e.exception.values&&e.exception.values[0];if(x&&x.type==='NetworkError')return null;if(!dev&&x&&x.value&&x.value.indexOf('Warning:')>=0)return null;
 e=clean(e);if(e.request&&e.request.cookies)delete e.request.cookies;if(e.request&&e.request.headers){var h=Object.assign({},e.request.headers);delete h.authorization;delete h.cookie;e.request.headers=h;}return e;},
