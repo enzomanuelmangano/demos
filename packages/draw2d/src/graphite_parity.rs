@@ -682,19 +682,26 @@ fn uikit_text_is_coregraphics() {
     }
     static OUTFIT: &[u8] = include_bytes!("../../../gpu/fonts/outfit.ttf");
     static ANTDESIGN: &[u8] = include_bytes!("../../../gpu/fonts/antdesign-arrow-right-subset.ttf");
-    static SFC: &[u8] = include_bytes!("../../../assets/fonts/SF-Compact-Rounded-Medium.otf");
+    // SF Compact Rounded is Apple's: never in the repository (App Store ITMS-91182). The one installed on this Mac
+    // (Apple's SF fonts package), or that case is skipped.
+    const SFC_PATH: &str = "/Library/Fonts/SF-Compact-Rounded-Medium.otf";
+    let sfc: Option<&'static [u8]> = std::fs::read(SFC_PATH).ok().map(|b| &*Box::leak(b.into_boxed_slice()));
     // TextKit's numbers for the AntDesign font at 20: the hhea ascender, not the typo ascender; the
     // line without the gap.
     let ad = Font::new(ANTDESIGN, 20.0).unwrap().with_ui_layout();
     assert_eq!(-ad.metrics().ascent, 17.773438);
     assert_eq!(ad.ui_line_height(), 20.9375);
     let mut worst = 0u8;
-    for (file, data, size, text) in [
-        ("../../gpu/fonts/outfit.ttf", OUTFIT, 11.0f32, "Sacrifice it all"),
-        ("../../gpu/fonts/outfit.ttf", OUTFIT, 4.0, "tiny text"),
-        ("../../assets/fonts/SF-Compact-Rounded-Medium.otf", SFC, 17.0, "Standard Pro"),
-        ("../../gpu/fonts/antdesign-arrow-right-subset.ttf", ANTDESIGN, 20.0, "\u{F117}"),
-    ] {
+    let mut cases = vec![
+        (format!("{root}/../../gpu/fonts/outfit.ttf"), OUTFIT, 11.0f32, "Sacrifice it all"),
+        (format!("{root}/../../gpu/fonts/outfit.ttf"), OUTFIT, 4.0, "tiny text"),
+        (format!("{root}/../../gpu/fonts/antdesign-arrow-right-subset.ttf"), ANTDESIGN, 20.0, "\u{F117}"),
+    ];
+    match sfc {
+        Some(data) => cases.push((SFC_PATH.to_string(), data, 17.0, "Standard Pro")),
+        None => eprintln!("{SFC_PATH} not installed: its case skipped"),
+    }
+    for (file, data, size, text) in cases {
         let font = Font::new(data, size).unwrap().with_ui_layout();
         for (ox, oy) in [(2.0f32, 3.0f32), (2.0 + 1.0 / 3.0, 3.0 + 1.0 / 3.0), (2.0 + 2.0 / 3.0, 3.0 + 2.0 / 3.0)] {
             let (w, h) = (W, H);
@@ -707,7 +714,7 @@ fn uikit_text_is_coregraphics() {
             let mut run = Vec::new();
             font.glyph_run(text, &mut run);
             let mut cmd = std::process::Command::new(&tool);
-            cmd.arg(format!("{root}/{file}")).arg(size.to_string()).arg(w.to_string()).arg(h.to_string()).arg("3").arg("PQA");
+            cmd.arg(&file).arg(size.to_string()).arg(w.to_string()).arg(h.to_string()).arg("3").arg("PQA");
             for (g, pen) in &run {
                 cmd.arg(format!("{g}:{:.9},{:.9}", ox + pen, baseline));
             }

@@ -3,7 +3,6 @@
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
-font "SF-Compact-Rounded-Medium" = "assets/fonts/SF-Compact-Rounded-Medium.otf"
 
 fn difficultyName(i: number): string = i == 0 ? "Light" : (i == 1 ? "Standard" : "Pro")
 // The control is the window width less 30, split into three equal cells.
@@ -29,12 +28,17 @@ component SteddyGraphInteraction
             PressableScale(press=pick(i))
               row flex-grow=1 align-items="center" justify-content="center" text-align="center"
                 aria-pressed=(i == selected) testId=`steddy-${difficultyName(i)}`
-                text difficultyName(i) font-family="SF-Compact-Rounded-Medium" font-size=17 color="#30302E"
+                text difficultyName(i) font-family="ui-rounded" font-weight=500 font-size=17 letter-spacing=-0.374 color="#30302E"
                   text-align="center"
         // The highlight behind the selected label. It sits under the labels.
         canvas surface=steddy_highlight(selected) position="absolute" left=0 top=0
           width=(controlWidth(env.width) - 2) height=54 z-index=1 pointer-events="none"
           aria-hidden=true testId="steddy-highlight"
-      // The graph, 200 tall.
-      canvas surface=steddy_graph_interaction(selected) width=env.width height=200 margin-top=20
-        flex-shrink=0 aria-hidden=true testId="steddy-graph"
+      // The graph, 200 tall, and its line score's label: the system's rounded face (an Apple font is never bundled),
+      // 80 from the right, its baseline 40 under the line at 70 of 110 (y 72.7: gpu/src/steddy_graph_interaction.rs).
+      view position="relative" width=env.width height=200 margin-top=20 flex-shrink=0
+        canvas surface=steddy_graph_interaction(selected) width=env.width height=200
+          aria-hidden=true testId="steddy-graph"
+        text "70 pts" position="absolute" left=(env.width - 80) top=98 font-family="ui-rounded" font-weight=500
+          font-size=18 letter-spacing=-0.372 line-height="18px" color="rgba(0, 0, 0, 0.5)" white-space="nowrap" pointer-events="none"
+          testId="steddy-line-label"
