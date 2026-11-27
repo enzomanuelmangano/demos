@@ -11,6 +11,17 @@ const FAVICON_HREF = `/favicon.ico?v=${createHash('sha256').update(readFileSync(
 
 export type Tag = { tag: 'title'; text: string } | { tag: 'meta' | 'link'; attrs: Record<string, string> };
 
+/** The site's icon links, as every page's head has them. */
+export const ICON_TAGS: Tag[] = [
+  { tag: 'link', attrs: { rel: 'icon', href: FAVICON_HREF, sizes: '48x48', type: 'image/x-icon' } },
+  { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/pwa/apple-touch-icon/apple-touch-icon-180.png', sizes: '180x180' } },
+];
+/** Exact's placeholder icon (host/web/index.html: a grey rounded square, for an app.json without `icons`), in every
+ *  page the SEO pass does not rewrite: shell.html (the client-rendered routes, /profile and /manage-subscription), and
+ *  the framed Demos app's pages. A page's icon link never changes on client navigation, so a tab that landed there
+ *  (the sign-in callback lands on /profile) kept the grey square on every page after. */
+export const EXACT_PLACEHOLDER_ICON = /<link rel="icon" href="data:image\/svg\+xml[^"]*">/;
+
 export type PageMetadata = {
   /** The route's path as served ('/', '/articles/x'); the 404 page is '/404'. */
   path: string;
@@ -91,8 +102,7 @@ export function headTags(m: PageMetadata): Tag[] {
     t.push(meta('name', 'twitter:image:width', String(OG.home.width)));
     t.push(meta('name', 'twitter:image:height', String(OG.home.height)));
   }
-  t.push({ tag: 'link', attrs: { rel: 'icon', href: FAVICON_HREF, sizes: '48x48', type: 'image/x-icon' } });
-  t.push({ tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/pwa/apple-touch-icon/apple-touch-icon-180.png', sizes: '180x180' } });
+  t.push(...ICON_TAGS);
   t.push(meta('http-equiv', 'X-UA-Compatible', 'IE=edge'));
   return t;
 }

@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { readdirSync } from 'node:fs';
-import { allPages, headTags, htmlFile, renderTags } from './metadata.ts';
+import { allPages, EXACT_PLACEHOLDER_ICON, headTags, htmlFile, ICON_TAGS, renderTags } from './metadata.ts';
 import { jsonLd, jsonLdScript } from './jsonld.ts';
 import { manifestJson, robotsTxt, rssXml, sitemapXml } from './feeds.ts';
 
@@ -67,8 +67,19 @@ for (const m of pages) {
   writeFileSync(file, html);
   done++;
 }
+// Every other page (shell.html above all) gets the site's icon in place of Exact's placeholder.
+let icons = 0;
+for (const f of readdirSync(dist, { recursive: true, encoding: 'utf8' })) {
+  if (!f.endsWith('.html') || f.split('/').some((s) => s.startsWith('.'))) continue;
+  const html = readFileSync(join(dist, f), 'utf8');
+  if (!EXACT_PLACEHOLDER_ICON.test(html)) continue;
+  writeFileSync(join(dist, f), html.replace(EXACT_PLACEHOLDER_ICON, () => renderTags(ICON_TAGS)));
+  icons++;
+}
+if (icons === 0) throw new Error('seo: no page had Exact\'s placeholder icon (shell.html has always had it): check EXACT_PLACEHOLDER_ICON');
 writeFileSync(join(dist, 'sitemap.xml'), sitemapXml());
 writeFileSync(join(dist, 'robots.txt'), robotsTxt());
 writeFileSync(join(dist, 'rss.xml'), rssXml());
 writeFileSync(join(dist, 'manifest.json'), manifestJson());
+console.log(`seo: the site's icon in ${icons} pages that had Exact's placeholder`);
 console.log(`seo: head + JSON-LD on ${done} pages (${missing.length ? `not built: ${missing.join(' ')}` : 'all built'}), sitemap.xml, robots.txt, rss.xml, manifest.json`);
