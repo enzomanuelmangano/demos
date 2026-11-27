@@ -1431,7 +1431,7 @@ input{all:unset;position:absolute;inset:0;padding:0 16px 0 41px;color:#fff;font-
 // A press held 0.5 s on an icon (or a right click) lifts the icon (scale 1.06 and a shadow) over a blurred, dimmed home
 // and opens the menu by it: the demo's name, then Inspiration (when the demo credits one), Share and View Code. Share is
 // the browser's share sheet where there is one, else the link is copied. The press that opened the menu is not a tap.
-const sourceUrl = (slug) => `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`;
+const sourceUrl = (slug) => `https://github.com/enzomanuelmangano/demos/tree/main/demos/${slug}`;
 const MENU_ICONS = {
   sparkles: '<path d="M10 2.5L11.6 7.6L16.5 9.2L11.6 10.8L10 15.9L8.4 10.8L3.5 9.2L8.4 7.6Z" fill="currentColor" stroke="none"/><path d="M16 14.2L16.6 16L18.3 16.6L16.6 17.2L16 19L15.4 17.2L13.7 16.6L15.4 16Z" fill="currentColor" stroke="none"/>',
   share: '<path d="M10 2.8V12.5M6.6 6.1L10 2.8L13.4 6.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 8.6H5.6C4.7 8.6 4 9.3 4 10.2V16C4 16.9 4.7 17.6 5.6 17.6H14.4C15.3 17.6 16 16.9 16 16V10.2C16 9.3 15.3 8.6 14.4 8.6H13" stroke-linecap="round"/>',
