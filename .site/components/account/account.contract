@@ -427,7 +427,7 @@ component SubscriptionBox
 
 // app/manage-subscription, for a subscriber only (the root sends anyone else to /profile): their plan and its cancel,
 // nothing that sells (decisions.md D26). The warning banners, then the plan's card (its features, its badge, "Cancel
-// Plan" while it can still bill).
+// Plan" while it can still bill), then a way to reach a person about it.
 component ManageSubscriptionPage
   props
     me: Me
@@ -454,6 +454,26 @@ component ManageSubscriptionPage
         // The plans' grid (grid-cols-1 sm:grid-cols-2 gap-4) with the reader's plan's card alone in it.
         view display="grid" gap=16 data-motion="plan-grid"
           PlanCardOwn(me=me, cancel=cancel)
+        SubscriptionSupport(email=me.email)
+
+// Under the plan, for every subscriber whatever its status: a person to write to about it (a charge, a cancel that did
+// not go through, an invoice). The mail opens addressed, with its subject and the account's email filled in.
+component SubscriptionSupport
+  props
+    email: string
+  view
+    column class=Surface padding=24 width="100%" testId="subscription-support"
+      row flex-wrap="wrap" align-items="center" column-gap=24 row-gap=16
+        column gap=4 flex="1 1 280px"
+          text "Need help with your subscription?" role="heading" aria-level=2 font-size="15px" line-height="1.5rem" font-weight=500
+            color="var(--color-text-primary)"
+          text "A charge, a cancellation, an invoice: write to me and I'll sort it out." font-size="0.875rem" line-height="1.5rem"
+            color="var(--color-text-tertiary)"
+        link href=`mailto:hello@reactiive.io?subject=Subscription%20support&body=Account%3A%20${email}` class=ButtonSecondary
+          display="flex" align-items="center" justify-content="center" height=36 padding="0 12px" border-radius="var(--radius-control)"
+          font-size="0.875rem" line-height="1.25rem" font-weight=500 flex-shrink=0 white-space="nowrap" data-motion="button press-secondary focus"
+          testId="subscription-support-mail"
+          text "Reach out for support"
 
 // components/subscription/plan-card, the current plan's only, without its price: title, badge, features, and while the
 // plan can still bill "Cancel Plan", which opens the confirmation. Card md: the surface's radius
