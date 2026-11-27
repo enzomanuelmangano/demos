@@ -37,6 +37,10 @@ if (env.VERCEL) {
   mkdirSync(join(env.HOME ?? '/root', '.cache'), { recursive: true });
   if (!existsSync(link)) symlinkSync(kept, link);
 } else env.PATH = `${join(env.HOME ?? '', '.cargo/bin')}:${env.PATH}`;
+// Which directories does Vercel actually keep between builds? A marker in each candidate, written at the end of a build
+// and looked for at the start of the next (the uploaded cache stayed 32 MB whatever .vercel/cache held).
+const MARKS = env.VERCEL ? [join(CACHE, '.marker'), join(ROOT, '.vercel/cache/reactiive-site.marker'), join(SITE, 'node_modules/.cache/reactiive-site.marker'), join(ROOT, 'node_modules/.cache/reactiive-site.marker')] : [];
+for (const m of MARKS) console.log(`cache marker ${existsSync(m) ? 'KEPT' : 'absent'}: ${m}${existsSync(m) ? ` (${readFileSync(m, 'utf8').trim()})` : ''}`);
 const t0 = Date.now();
 const step = (what: string) => console.log(`\n▸ ${what} (+${Math.round((Date.now() - t0) / 1000)} s)`);
 const run = (cmd: string, opts: { cwd?: string; env?: Record<string, string | undefined> } = {}) => {
@@ -140,4 +144,5 @@ run('bun tools/compose.ts', { env: { SITE_ORIGIN: env.SITE_ORIGIN || 'https://re
 rmSync(join(CACHE, 'demos-web-target'), { recursive: true, force: true }); // where earlier builds kept the demos' target dir
 console.log(`cache: ${out(`du -sh ${CACHE} 2>/dev/null | cut -f1`)} in .vercel/cache (kept between builds; Vercel keeps it under 5 GB):`);
 console.log(out(`du -sh ${CACHE}/* 2>/dev/null || true`));
+for (const m of MARKS) { mkdirSync(join(m, '..'), { recursive: true }); writeFileSync(m, `${env.VERCEL_GIT_COMMIT_SHA ?? ''} ${new Date().toISOString()}\n`); }
 console.log(`\nvercel-build: .vercel/output ready (${readdirSync(join(SITE, '.vercel/output/static')).length} entries at the root) in ${Math.round((Date.now() - t0) / 1000)} s`);
