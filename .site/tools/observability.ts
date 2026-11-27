@@ -19,6 +19,9 @@
 //   survives (a wasm trap in a GPU module, a refused GPU input), which no handler would otherwise see. Events carry the
 //   deployed commit as their release, `preview` or `production` as their environment, and a `surface` tag: `site`, or
 //   `demos-app` for the framed Demos app (tools/compose.ts runs this script on its pages too).
+// - No request of the page carries Sentry's trace headers (tracePropagationTargets: []): the framed Demos app is a
+//   sandboxed, null-origin document, so even its own files are cross-origin requests, and a sentry-trace header made
+//   their CORS preflight fail (no wasm, every demo blank). Spans are still recorded; they are just not propagated.
 // - On localhost / 127.0.0.1 nothing is sent: Amplitude is initialised opted out and logs what it would track,
 //   Sentry is initialised with `enabled: false` and `debug: true`. Production data stays clean.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -68,7 +71,7 @@ function clean(e){if(e.transaction)e.transaction=scrub(e.transaction);if(e.reque
 (e.spans||[]).forEach(function(sp){if(sp.description)sp.description=scrub(sp.description);if(sp.data){['url','http.url','http.query'].forEach(function(k){if(sp.data[k])sp.data[k]=scrub(sp.data[k]);});}});
 if(e.contexts&&e.contexts.trace&&e.contexts.trace.data){['url','http.url','http.query'].forEach(function(k){if(e.contexts.trace.data[k])e.contexts.trace.data[k]=scrub(e.contexts.trace.data[k]);});}return e;}
 S.init({dsn:D,debug:dev,tracesSampleRate:dev?1:0.1,release:${JSON.stringify(RELEASE)},environment:dev?'development':${JSON.stringify(ENVIRONMENT)},enabled:!local,initialScope:{tags:{surface:location.pathname.indexOf('/demos/app')===0?'demos-app':'site'}},
-integrations:[S.browserTracingIntegration()],
+integrations:[S.browserTracingIntegration()],tracePropagationTargets:[],
 beforeSendTransaction:function(e){return clean(e);},
 beforeSend:function(e){var x=e.exception&&e.exception.values&&e.exception.values[0];if(x&&x.type==='NetworkError')return null;if(!dev&&x&&x.value&&x.value.indexOf('Warning:')>=0)return null;
 e=clean(e);if(e.request&&e.request.cookies)delete e.request.cookies;if(e.request&&e.request.headers){var h=Object.assign({},e.request.headers);delete h.authorization;delete h.cookie;e.request.headers=h;}return e;},
