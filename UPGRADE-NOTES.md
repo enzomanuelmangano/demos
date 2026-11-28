@@ -9,10 +9,13 @@ checkout's object store, its `target`, `node_modules` and the Hermes installer's
 
 - **exact-gpu's `Surface::device_lost` returns a bool** (a63357bec, expo/exact#2086, our report): `false`, the
   default, has the module drop the surface and build a fresh one from its factory on the replacement device (replaying
-  its configuration and last bind); `true` keeps the instance. The site's ten surfaces drop every handle of the lost
-  device (`.site/gpu/src/device_loss_tests.rs`, which now also asserts the `true`) and say `true`; the Demos app's
-  bytes wrapper (`gpu/src/bytes.rs`) forwards its inner surface's answer, and no demo overrides it, so every demo
-  surface is rebuilt. That is what fixes Sentry REACTIIVE-PROD-6F (Sphere Waves' "sphere waves uniforms" buffer used
+  its configuration and last bind: a demo's own state, a game under way, starts again); `true` keeps the instance. The
+  site's ten surfaces drop every handle of the lost device and say `true`. `.site/gpu/src/device_loss_tests.rs` draws
+  six of them on one device, loses it, draws on a second and compares with a fresh surface: the two the site registers
+  (`site` and `ghost`, /apps; new here) and journey's row and floor, arena and hero; aura, level_board, mascot and wave
+  are checked by reading only (none is registered). The Demos app's bytes wrapper (`gpu/src/bytes.rs`) forwards its
+  inner surface's answer, and no demo overrides it, so every demo surface is rebuilt; it also forwards the new
+  `set_waker`. That is what fixes Sentry REACTIIVE-PROD-6F (Sphere Waves' "sphere waves uniforms" buffer used
   with the replacement device): the old surface and its buffer are gone. The Demos app's Contract build has 0 errors;
   the site needed nothing else.
 - **#170's reload on a lost device is gone** (both `app.json`s). Checked in headless Chrome with a real GPU process
@@ -21,7 +24,9 @@ checkout's object store, its `target`, `node_modules` and the Hermes installer's
   open after it, 0 device errors, no reload; the site's /apps ghost recovers the same way. The same test on the
   d885904c build (reactiive.io) crashes the frame's renderer. Kept, the guard would reload on every loss and throw
   that recovery away; where recovery cannot help (Chrome turns WebGPU off after repeated GPU crashes, "no adapter"),
-  a reload cannot either.
+  a reload cannot either. What changes: past upstream's limit (`RECOVERY_LIMIT`, 5 tries with backoff; "no adapter"
+  at once) the web host hides the GPU canvases (`host/web/gpu-glue.js` `terminalRecovery`) and does not reload, where
+  the guard reloaded up to twice a minute.
 - **The site's `CSS` stand-in is gone** (`.site/app.ts`): 5c1f45735 (expo/exact#1926, our report) gives the build-time
   prerender a `CSS` global and guards the runtime's calls. The site builds without it.
 - **The local Apple patch** (`.parity/exact-issues/radius-reduced.patch`): still not upstream (neither `Surface.swift`

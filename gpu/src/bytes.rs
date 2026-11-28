@@ -314,6 +314,9 @@ mod web {
         fn device_lost(&mut self) -> bool {
             self.inner.device_lost()
         }
+        fn set_waker(&mut self, waker: exact_gpu::SurfaceWaker) {
+            self.inner.set_waker(waker)
+        }
         fn retier(&mut self) -> bool {
             self.inner.retier()
         }
