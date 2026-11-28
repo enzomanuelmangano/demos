@@ -888,6 +888,7 @@ dependencies = [
  "ibex2-sqlite",
  "libc",
  "miniz_oxide 0.8.9",
+ "ring",
  "serde_json",
  "sha2 0.10.9",
  "windows-sys 0.61.2",
