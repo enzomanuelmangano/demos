@@ -13,6 +13,19 @@ import { join, resolve } from 'node:path';
 type Patch = { file: RegExp; why: string; edits: [string, string][]; prepend?: string; dir?: string; requires?: string[] };
 
 export const PATCHES: Patch[] = [
+  {
+    // Exact's press tracks (host/web/input-glue.js) parse the node's `--exact-press-timing` as JSON, but the host
+    // writes the word `unset` there when the node's transition has no press entry (host/web-js/src/rows.rs: an empty
+    // value is written as "unset"). JSON.parse("unset") throws on every press of such a node: the press animation is
+    // lost and Sentry fills (REACTIIVE-PROD-6K, 6M: Pomodoro Timer, Chrome 158). `unset` reads as no timing, which is
+    // what an empty value already meant. Reported upstream; drop this patch when the pinned Exact carries the fix.
+    file: /^input-glue-[\w-]+\.js$/,
+    why: 'a press on a node whose --exact-press-timing is "unset" throws in JSON.parse',
+    edits: [[
+      'let o=e.style.getPropertyValue(`--exact-press-timing`),s=o?JSON.parse(o):null;',
+      'let o=e.style.getPropertyValue(`--exact-press-timing`).trim(),s=o&&o!==`unset`?JSON.parse(o):null;',
+    ]],
+  },
   // Upstream fixed in Exact d885904c (checked without the patches: tools/parity/composable-text.ts and
   // height-spring.ts pass): the exit ghosts of adjacent siblings (Composable Text) and the height -exact-spring that
   // snapped (Miles Bar Chart). Their patches are gone.
