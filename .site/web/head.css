@@ -281,6 +281,13 @@ html #exact-root input:not([data-native]):focus-visible{outline:none}
    html[data-menu-early] until the runtime, which replays the tap, draws the menu itself): the open look of
    components/shell.contract (the panel, its slide, the X icon from the three lines). */
 html[data-menu-early] #mobile-menu{opacity:1 !important;pointer-events:auto !important}
+/* The closed mobile menu (inert, opacity 0) still covered the whole screen inside the header's sticky layer, and iOS 26+
+   Safari takes a sticky or fixed box that reaches the bottom edge for the page's own bottom bar: it filled the space
+   under its floating toolbar with a solid band instead of letting the page scroll beneath it, as the old site did.
+   Closed, it is also hidden, once its 300 ms fade (components/shell.contract) has run; it shows at once on opening. */
+#mobile-menu{transition:opacity .3s cubic-bezier(.4,0,.2,1),visibility 0s}
+#mobile-menu[inert]{visibility:hidden;transition:opacity .3s cubic-bezier(.4,0,.2,1),visibility 0s linear .3s}
+html[data-menu-early] #mobile-menu{visibility:visible !important}
 html[data-menu-early] #mobile-menu>:nth-child(2){translate:0 0 !important;opacity:1 !important}
 html[data-menu-early] [aria-controls=mobile-menu] line{transform-origin:12px 12px}
 html[data-menu-early] [aria-controls=mobile-menu] line:nth-child(1){opacity:0}
