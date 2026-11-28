@@ -76,6 +76,9 @@ S.init({dsn:D,debug:dev,${SENTRY_ONLY ? '' : 'tracesSampleRate:dev?1:0.1,'}relea
 ${SENTRY_ONLY ? 'integrations:[],' : 'integrations:[S.browserTracingIntegration()],tracePropagationTargets:[],'}
 beforeSendTransaction:function(e){return clean(e);},
 beforeSend:function(e){var x=e.exception&&e.exception.values&&e.exception.values[0];if(x&&x.type==='NetworkError')return null;if(!dev&&x&&x.value&&x.value.indexOf('Warning:')>=0)return null;
+var said=String((x&&x.value)||e.message||'')+' '+String((e.extra&&e.extra.console)||'');
+if(said.indexOf(":popover-open' is not a valid selector")>=0)return null;
+if(said.indexOf('requestAdapter returned null')>=0){e.level='warning';e.fingerprint=['webgpu-unavailable'];e.tags=Object.assign({},e.tags,{webgpu:'unavailable'});}
 e=clean(e);if(e.request&&e.request.cookies)delete e.request.cookies;if(e.request&&e.request.headers){var h=Object.assign({},e.request.headers);delete h.authorization;delete h.cookie;e.request.headers=h;}return e;},
 beforeBreadcrumb:function(b){if(b.category==='console'&&b.data&&b.data.arguments){if(b.data.arguments.some(function(a){return typeof a==='string'&&(a.indexOf('password')>=0||a.indexOf('token')>=0||a.indexOf('secret')>=0);}))return null;}
 var t=b.data&&b.data.to;if(b.category==='navigation'&&typeof t==='string'&&(t.indexOf('/api/auth')>=0||t.indexOf('/api/login')>=0||t.indexOf('accessToken=')>=0))b.data=Object.assign({},b.data,{to:'[REDACTED_AUTH_ROUTE]'});
