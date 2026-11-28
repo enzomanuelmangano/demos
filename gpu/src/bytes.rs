@@ -311,7 +311,7 @@ mod web {
         fn device_ready(&mut self, features: wgpu::Features, limits: wgpu::Limits) {
             self.inner.device_ready(features, limits)
         }
-        fn device_lost(&mut self) {
+        fn device_lost(&mut self) -> bool {
             self.inner.device_lost()
         }
         fn retier(&mut self) -> bool {

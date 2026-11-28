@@ -30,7 +30,7 @@ fn survives(name: &str, make: fn() -> Box<dyn Surface>, inputs: &[Value], frame:
     let mut s = make();
     s.bind(inputs, None).unwrap();
     fixture::render(&a, s.as_mut(), &frame).unwrap();
-    s.device_lost();
+    assert!(s.device_lost(), "{name}: recovers in place");
     let (after, _) = fixture::render(&b, s.as_mut(), &frame).unwrap();
     let mut fresh = make();
     fresh.bind(inputs, None).unwrap();

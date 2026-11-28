@@ -327,13 +327,14 @@ impl WaveSurface {
 impl Surface for WaveSurface {
     /// The device was lost (exact-gpu `Module::lose_device`; recovery gives this surface a new one):
     /// drop every resource of the old device, so the next render builds on the new one.
-    fn device_lost(&mut self) {
+    fn device_lost(&mut self) -> bool {
         self.gpu = None;
         // The snapshot's texture was the old device's: read it again for the new one.
         if self.children.take().is_some() && !self.path.is_empty() {
             self.pending = read_snapshot(&self.path).ok();
         }
         self.stale = true;
+        true
     }
 
     fn bind(&mut self, inputs: &[Value], at_ms: Option<f64>) -> Result<(), SurfaceError> {

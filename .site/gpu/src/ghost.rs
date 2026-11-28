@@ -332,11 +332,12 @@ fn page_of(value: &Value) -> Result<f64, SurfaceError> {
 impl Surface for GhostSurface {
     /// The device was lost (exact-gpu `Module::lose_device`; recovery gives this surface a new one):
     /// drop every resource of the old device, so the next render builds on the new one.
-    fn device_lost(&mut self) {
+    fn device_lost(&mut self) -> bool {
         self.gpu = None;
         self.probe.device_lost();
         // The host captures the children again for the new device.
         self.copy = Default::default();
+        true
     }
 
     fn bind(&mut self, inputs: &[Value], at_ms: Option<f64>) -> Result<(), SurfaceError> {

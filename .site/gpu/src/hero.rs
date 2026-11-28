@@ -357,7 +357,7 @@ impl HeroSurface {
 impl Surface for HeroSurface {
     /// The device was lost (exact-gpu `Module::lose_device`; recovery gives this surface a new one):
     /// drop every resource of the old device, so the next render builds on the new one.
-    fn device_lost(&mut self) {
+    fn device_lost(&mut self) -> bool {
         self.gpu = None;
         // The picture went with the device: a held ghost draws its pose again.
         if let Some(p) = self.performer.as_mut() {
@@ -368,6 +368,7 @@ impl Surface for HeroSurface {
         {
             self.building = None;
         }
+        true
     }
 
     fn max_fps(&self) -> u32 {
