@@ -8,7 +8,7 @@
 //! [`prioritize`] moves one demo to the front (the finger is down on its icon).
 //!
 //! The canvas's one input says whether the home is on top. While a demo is open the thread warms only
-//! that demo's surfaces (the front) and waits for the home to come back before the rest: the warm-up
+//! the demo at the front (the icon last touched) and then parks until the home comes back: the warm-up
 //! took ~25 s of a fifth of a core after launch, all of it spent while the open demo sat still.
 
 use std::collections::VecDeque;
@@ -30,9 +30,6 @@ const HEIGHT: f32 = 844.0;
 /// The pause after each surface, so the main thread and the render server are never starved.
 #[cfg(not(target_arch = "wasm32"))]
 const PAUSE: Duration = Duration::from_millis(60);
-/// How often a paused warm-up (a demo is open) looks for the home again.
-#[cfg(not(target_arch = "wasm32"))]
-const PAUSED_POLL: Duration = Duration::from_millis(250);
 
 /// The surface: draws nothing; its first frame starts the warm-up. Its input: the home is on top.
 pub fn surface() -> Box<dyn Surface> {
@@ -47,6 +44,7 @@ impl Surface for Warm {
     fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
         if let Some(home) = inputs.first().and_then(|v| v.as_bool()) {
             HOME.store(home, Ordering::Release);
+            wake();
         }
         Ok(())
     }
@@ -72,6 +70,17 @@ impl Surface for Warm {
 static STARTED: AtomicBool = AtomicBool::new(false);
 /// The home is on top: the warm-up may build every demo, not only the front's.
 static HOME: AtomicBool = AtomicBool::new(true);
+/// The warm-up's thread, unparked when the home comes back or an icon is touched.
+#[cfg(not(target_arch = "wasm32"))]
+static THREAD: std::sync::OnceLock<std::thread::Thread> = std::sync::OnceLock::new();
+
+/// Wakes a parked warm-up to look at the home and the front again.
+fn wake() {
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(thread) = THREAD.get() {
+        thread.unpark();
+    }
+}
 /// The demos to warm before the rest, most recent first.
 static FRONT: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
 
@@ -81,6 +90,8 @@ pub fn prioritize(slug: &str) {
     let mut front = FRONT.lock().unwrap_or_else(|e| e.into_inner());
     front.retain(|k| *k != key);
     front.push_front(key);
+    drop(front);
+    wake();
 }
 
 /// Whether surface `name` belongs to the demo `key`: its own, or a companion (`sudoku_backdrop`).
@@ -94,10 +105,13 @@ fn start(device: wgpu::Device, queue: wgpu::Queue) {
     if STARTED.swap(true, Ordering::AcqRel) {
         return;
     }
-    let _ = std::thread::Builder::new().name("demos-gpu-warm".into()).spawn(move || {
+    let spawned = std::thread::Builder::new().name("demos-gpu-warm".into()).spawn(move || {
         lower_priority();
         run(&device, &queue);
     });
+    if let Ok(handle) = spawned {
+        let _ = THREAD.set(handle.thread().clone());
+    }
 }
 
 #[cfg(all(target_vendor = "apple", not(target_arch = "wasm32")))]
@@ -129,15 +143,23 @@ fn run(device: &wgpu::Device, queue: &wgpu::Queue) {
             }
         });
         let Some(name) = next else {
-            // The front's demos are done: drop them and look again.
-            if FRONT.lock().unwrap_or_else(|e| e.into_inner()).pop_front().is_some() {
+            let mut front = FRONT.lock().unwrap_or_else(|e| e.into_inner());
+            if HOME.load(Ordering::Acquire) {
+                // Everything is done: drop the front's demos and finish.
+                if front.pop_front().is_some() {
+                    continue;
+                }
+            } else if !front.is_empty() {
+                // A demo is open and its surfaces are done: older touches wait for the home like the rest.
+                front.clear();
                 continue;
             }
-            // Finished, or a demo is open: wait for the home before the rest.
+            drop(front);
             if !surfaces.iter().map(|s| s.0).any(|n| rest(&n)) {
                 return;
             }
-            std::thread::sleep(PAUSED_POLL);
+            // A demo is open: sleep until the home comes back or an icon is touched (`wake`).
+            std::thread::park();
             continue;
         };
         done.push(name);
