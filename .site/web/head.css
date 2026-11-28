@@ -304,3 +304,8 @@ html[data-still] [data-motion~=sim-still]{opacity:1}
 
 /* /apps's stage (pages/apps.contract): the glow has not quite reached the page's colour at the canvas's top edge; it fades in over its first 18 %. */
 [data-motion~=apps-stage]{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 18%);mask-image:linear-gradient(to bottom,transparent,#000 18%)}
+/* /apps's stage without WebGPU (web/gpu-guard.js sets html[data-gpu]: none, no adapter or no navigator.gpu; failed, the
+   GPU load still failing after its retries and reloads): a still of
+   the surface's first pose (public/stills/apps-ghost.webp, 1280 x 920, the 640 x 460 stage at 2x, shot from the live
+   surface with the stage's mask off), instead of an empty 460 px. */
+html[data-gpu] [data-motion~=apps-stage]{background:url(/stills/apps-ghost.webp) center/100% 100% no-repeat}

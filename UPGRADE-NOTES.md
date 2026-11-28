@@ -18,7 +18,9 @@ checkout's object store, its `target`, `node_modules` and the Hermes installer's
   `set_waker`. That is what fixes Sentry REACTIIVE-PROD-6F (Sphere Waves' "sphere waves uniforms" buffer used
   with the replacement device): the old surface and its buffer are gone. The Demos app's Contract build has 0 errors;
   the site needed nothing else.
-- **#170's reload on a lost device is gone** (both `app.json`s). Checked in headless Chrome with a real GPU process
+- **#170's reload on a lost device is gone**: #172 moved it into `.site/web/gpu-guard.js` (written into both heads by
+  `bun .site/tools/head.ts`); only its `d.lost` branch is removed, the rest of the guard (fetch and glue-import
+  retries, the reload on a non-adapter "no device", `data-gpu`) stays. Checked in headless Chrome with a real GPU process
   crash (CDP `Browser.crashGpuProcess`) under an open Sphere Waves in the framed app at /demos/sphere-waves, the guard
   disabled: the device is replaced, the demo keeps drawing and animating, Chessboard, Fractal Glass and Sphere Waves
   open after it, 0 device errors, no reload; the site's /apps ghost recovers the same way. The same test on the
