@@ -44,11 +44,11 @@ const isGoto = (h: any) => typeof h.script?.text === 'string' && h.script.text.i
 const gi = next.findIndex(isGoto);
 if (gi >= 0) next[gi] = { script: { text: goto } };
 else next.splice(next.findIndex((h) => typeof h.script?.text === 'string' && h.script.text.includes('reactiive.demos.arrow')) + 1, 0, { script: { text: goto } });
-// web/gpu-guard.js (a GPU surface never stays blank: expo/exact#2086, #2131), last, comments dropped. It replaces #170's
-// device-loss reload, which it carries. The Demos app's head (../app.json) gets the same text: its frame on /demos and
-// /demos/app/ load the same GPU glue.
+// web/gpu-guard.js (<html data-gpu>: a page shows a still where WebGPU will not draw), last, comments dropped. It
+// replaces #172's guard (found by its `exact-gpu-reload:` marker), whose retries Exact now does itself. The Demos app's
+// head (../app.json) gets the same text: its frame on /demos and /demos/app/ load the same GPU glue.
 const guard = readFileSync(join(site, 'web/gpu-guard.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
-const isGuard = (h: any) => typeof h.script?.text === 'string' && h.script.text.includes('exact-gpu-reload:');
+const isGuard = (h: any) => typeof h.script?.text === 'string' && (h.script.text.includes('exact-gpu-reload:') || h.script.text.includes("setAttribute('data-gpu'"));
 const gu = next.findIndex(isGuard);
 if (gu >= 0) next[gu] = { script: { text: guard } }; else next.push({ script: { text: guard } });
 const demosPath = join(site, '../app.json');
