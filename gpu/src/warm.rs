@@ -105,13 +105,12 @@ fn start(device: wgpu::Device, queue: wgpu::Queue) {
     if STARTED.swap(true, Ordering::AcqRel) {
         return;
     }
-    let spawned = std::thread::Builder::new().name("demos-gpu-warm".into()).spawn(move || {
+    let _ = std::thread::Builder::new().name("demos-gpu-warm".into()).spawn(move || {
+        // Set before the first look at the home, so no `wake` can miss the thread.
+        let _ = THREAD.set(std::thread::current());
         lower_priority();
         run(&device, &queue);
     });
-    if let Ok(handle) = spawned {
-        let _ = THREAD.set(handle.thread().clone());
-    }
 }
 
 #[cfg(all(target_vendor = "apple", not(target_arch = "wasm32")))]
