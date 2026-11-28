@@ -285,8 +285,10 @@ html[data-menu-early] #mobile-menu{opacity:1 !important;pointer-events:auto !imp
    Safari takes a sticky or fixed box that reaches the bottom edge for the page's own bottom bar: it filled the space
    under its floating toolbar with a solid band instead of letting the page scroll beneath it, as the old site did.
    Closed, it is also hidden, once its 300 ms fade (components/shell.contract) has run; it shows at once on opening. */
-#mobile-menu{transition:opacity .3s cubic-bezier(.4,0,.2,1),visibility 0s}
-#mobile-menu[inert]{visibility:hidden;transition:opacity .3s cubic-bezier(.4,0,.2,1),visibility 0s linear .3s}
+/* !important: Exact nests the component's own transition (opacity only) under #exact-root#exact-root, which outranks
+   these selectors and would drop the visibility delay: the menu would vanish at once on closing, with no fade. */
+#mobile-menu{transition:opacity .3s cubic-bezier(.4,0,.2,1),visibility 0s !important}
+#mobile-menu[inert]{visibility:hidden;transition:opacity .3s cubic-bezier(.4,0,.2,1),visibility 0s linear .3s !important}
 html[data-menu-early] #mobile-menu{visibility:visible !important}
 html[data-menu-early] #mobile-menu>:nth-child(2){translate:0 0 !important;opacity:1 !important}
 html[data-menu-early] [aria-controls=mobile-menu] line{transform-origin:12px 12px}
