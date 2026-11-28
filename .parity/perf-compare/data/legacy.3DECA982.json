@@ -1,0 +1,470 @@
+{
+ "the-little-prince": {
+  "homeMB": 291,
+  "openMB": 432,
+  "idle": {
+   "cpu": 20.7,
+   "peakMB": 432
+  },
+  "interact": {
+   "cpu": 2.6,
+   "peakMB": 441
+  },
+  "crashed": false
+ },
+ "cherry-blossom-qrcode": {
+  "homeMB": 229,
+  "openMB": 281,
+  "idle": {
+   "cpu": 8.1,
+   "peakMB": 394
+  },
+  "interact": {
+   "cpu": 6.1,
+   "peakMB": 279
+  },
+  "crashed": false
+ },
+ "scrollable-shapes": {
+  "homeMB": 15,
+  "openMB": 209,
+  "idle": {
+   "cpu": 93.9,
+   "peakMB": 420
+  },
+  "interact": {
+   "cpu": 24.6,
+   "peakMB": 487
+  },
+  "crashed": false
+ },
+ "blur-cards": {
+  "homeMB": 437,
+  "openMB": 262,
+  "idle": {
+   "cpu": 2.1,
+   "peakMB": 262
+  },
+  "interact": {
+   "cpu": 1.8,
+   "peakMB": 255
+  },
+  "crashed": false
+ },
+ "stacked-carousel": {
+  "homeMB": 329,
+  "openMB": 383,
+  "idle": {
+   "cpu": 41,
+   "peakMB": 498
+  },
+  "interact": {
+   "cpu": 2.2,
+   "peakMB": 484
+  },
+  "crashed": false
+ },
+ "online-offline": {
+  "homeMB": 468,
+  "openMB": 446,
+  "idle": {
+   "cpu": 2,
+   "peakMB": 446
+  },
+  "interact": {
+   "cpu": 1.7,
+   "peakMB": 444
+  },
+  "crashed": false
+ },
+ "magnet-spring": {
+  "homeMB": 146,
+  "openMB": 423,
+  "idle": {
+   "cpu": 14.9,
+   "peakMB": 487
+  },
+  "interact": {
+   "cpu": 4.7,
+   "peakMB": 483
+  },
+  "crashed": false
+ },
+ "card-shader-reflections": {
+  "homeMB": 332,
+  "openMB": 452,
+  "idle": {
+   "cpu": 2.9,
+   "peakMB": 450
+  },
+  "interact": {
+   "cpu": 2.9,
+   "peakMB": 447
+  },
+  "crashed": false
+ },
+ "threads-holo-ticket": {
+  "homeMB": 320,
+  "openMB": 452,
+  "idle": {
+   "cpu": 8.5,
+   "peakMB": 491
+  },
+  "interact": {
+   "cpu": 1.3,
+   "peakMB": 472
+  },
+  "crashed": false
+ },
+ "linear-sensors": {
+  "homeMB": 19,
+  "openMB": 320,
+  "idle": {
+   "cpu": 105.9,
+   "peakMB": 508
+  },
+  "interact": {
+   "cpu": 1.7,
+   "peakMB": 498
+  },
+  "crashed": false
+ },
+ "tab-navigation": {
+  "homeMB": 378,
+  "openMB": 514,
+  "idle": {
+   "cpu": 9.4,
+   "peakMB": 516
+  },
+  "interact": {
+   "cpu": 3.9,
+   "peakMB": 508
+  },
+  "crashed": false
+ },
+ "snake": {
+  "homeMB": 461,
+  "openMB": 400,
+  "idle": {
+   "cpu": 2.2,
+   "peakMB": 400
+  },
+  "interact": {
+   "cpu": 1.4,
+   "peakMB": 396
+  },
+  "crashed": false
+ },
+ "alert-drawer": {
+  "homeMB": 476,
+  "openMB": 494,
+  "idle": {
+   "cpu": 1.2,
+   "peakMB": 494
+  },
+  "interact": {
+   "cpu": 1,
+   "peakMB": 449
+  },
+  "crashed": false
+ },
+ "exclusion-tabs": {
+  "homeMB": 500,
+  "openMB": 448,
+  "idle": {
+   "cpu": 1.2,
+   "peakMB": 448
+  },
+  "interact": {
+   "cpu": 1.9,
+   "peakMB": 389
+  },
+  "crashed": false
+ },
+ "miles-bar-chart": {
+  "homeMB": 297,
+  "openMB": 492,
+  "idle": {
+   "cpu": 10.2,
+   "peakMB": 492
+  },
+  "interact": {
+   "cpu": 1.5,
+   "peakMB": 471
+  },
+  "crashed": false
+ },
+ "dot-sheet": {
+  "homeMB": 170,
+  "openMB": 352,
+  "idle": {
+   "cpu": 70,
+   "peakMB": 419
+  },
+  "interact": {
+   "cpu": 2.7,
+   "peakMB": 489
+  },
+  "crashed": false
+ },
+ "atlas-sphere": {
+  "homeMB": 291,
+  "openMB": 411,
+  "idle": {
+   "cpu": 41.9,
+   "peakMB": 495
+  },
+  "interact": {
+   "cpu": 1.8,
+   "peakMB": 483
+  },
+  "crashed": false
+ },
+ "grid-visualizer": {
+  "homeMB": 210,
+  "openMB": 475,
+  "idle": {
+   "cpu": 2.4,
+   "peakMB": 477
+  },
+  "interact": {
+   "cpu": 2.1,
+   "peakMB": 475
+  },
+  "crashed": false
+ },
+ "wheel-picker": {
+  "homeMB": 64,
+  "openMB": 273,
+  "idle": {
+   "cpu": 41.7,
+   "peakMB": 424
+  },
+  "interact": {
+   "cpu": 5,
+   "peakMB": 506
+  },
+  "crashed": false
+ },
+ "empty-qr-code": {
+  "homeMB": 230,
+  "openMB": 351,
+  "idle": {
+   "cpu": 48.3,
+   "peakMB": 490
+  },
+  "interact": {
+   "cpu": 2.5,
+   "peakMB": 490
+  },
+  "crashed": false
+ },
+ "stacked-bottom-sheet": {
+  "homeMB": 60,
+  "openMB": 291,
+  "idle": {
+   "cpu": 68.8,
+   "peakMB": 404
+  },
+  "interact": {
+   "cpu": 5.4,
+   "peakMB": 505
+  },
+  "crashed": false
+ },
+ "verification-code": {
+  "homeMB": 231,
+  "openMB": 352,
+  "idle": {
+   "cpu": 17.4,
+   "peakMB": 413
+  },
+  "interact": {
+   "cpu": 2.1,
+   "peakMB": 301
+  },
+  "crashed": false
+ },
+ "family-number-input": {
+  "homeMB": 328,
+  "openMB": 445,
+  "idle": {
+   "cpu": 13.1,
+   "peakMB": 462
+  },
+  "interact": {
+   "cpu": 2.3,
+   "peakMB": 379
+  },
+  "crashed": false
+ },
+ "fractal-glass": {
+  "homeMB": 280,
+  "openMB": 400,
+  "idle": {
+   "cpu": 56.4,
+   "peakMB": 441
+  },
+  "interact": {
+   "cpu": 2.2,
+   "peakMB": 447
+  },
+  "crashed": false
+ },
+ "action-tray": {
+  "homeMB": 65,
+  "openMB": 265,
+  "idle": {
+   "cpu": 48.7,
+   "peakMB": 314
+  },
+  "interact": {
+   "cpu": 24,
+   "peakMB": 426
+  },
+  "crashed": false
+ },
+ "blurred-scroll": {
+  "homeMB": 209,
+  "openMB": 343,
+  "idle": {
+   "cpu": 65.7,
+   "peakMB": 401
+  },
+  "interact": {
+   "cpu": 2.3,
+   "peakMB": 472
+  },
+  "crashed": false
+ },
+ "loading-button": {
+  "homeMB": 48,
+  "openMB": 153,
+  "idle": {
+   "cpu": 29.8,
+   "peakMB": 276
+  },
+  "interact": {
+   "cpu": 41.2,
+   "peakMB": 486
+  },
+  "crashed": false
+ },
+ "telegram-theme-switch": {
+  "homeMB": 25,
+  "openMB": 345,
+  "idle": {
+   "cpu": 38.6,
+   "peakMB": 515
+  },
+  "interact": {
+   "cpu": 1.6,
+   "peakMB": 417
+  },
+  "crashed": false
+ },
+ "selectable-grid-list": {
+  "homeMB": 336,
+  "openMB": 453,
+  "idle": {
+   "cpu": 1.7,
+   "peakMB": 454
+  },
+  "interact": {
+   "cpu": 1.4,
+   "peakMB": 388
+  },
+  "crashed": false
+ },
+ "fluid-slider": {
+  "homeMB": 337,
+  "openMB": 484,
+  "idle": {
+   "cpu": 2.1,
+   "peakMB": 484
+  },
+  "interact": {
+   "cpu": 1.6,
+   "peakMB": 458
+  },
+  "crashed": false
+ },
+ "audio-player": {
+  "homeMB": 324,
+  "openMB": 453,
+  "idle": {
+   "cpu": 4.9,
+   "peakMB": 457
+  },
+  "interact": {
+   "cpu": 2.6,
+   "peakMB": 387
+  },
+  "crashed": false
+ },
+ "blur-circles": {
+  "homeMB": 147,
+  "openMB": 451,
+  "idle": {
+   "cpu": 103.6,
+   "peakMB": 515
+  },
+  "interact": {
+   "cpu": 2.7,
+   "peakMB": 515
+  },
+  "crashed": false
+ },
+ "metaball": {
+  "homeMB": 125,
+  "openMB": 368,
+  "idle": {
+   "cpu": 35.8,
+   "peakMB": 376
+  },
+  "interact": {
+   "cpu": 3.3,
+   "peakMB": 473
+  },
+  "crashed": false
+ },
+ "add-to-cart": {
+  "homeMB": 155,
+  "openMB": 270,
+  "idle": {
+   "cpu": 37.3,
+   "peakMB": 354
+  },
+  "interact": {
+   "cpu": 40.8,
+   "peakMB": 418
+  },
+  "crashed": false
+ },
+ "floating-bottom-bar": {
+  "homeMB": 154,
+  "openMB": 297,
+  "idle": {
+   "cpu": 54.2,
+   "peakMB": 488
+  },
+  "interact": {
+   "cpu": 2.5,
+   "peakMB": 483
+  },
+  "crashed": false
+ },
+ "swipe-cards": {
+  "homeMB": 474,
+  "openMB": 488,
+  "idle": {
+   "cpu": 1.5,
+   "peakMB": 488
+  },
+  "interact": {
+   "cpu": 1.5,
+   "peakMB": 455
+  },
+  "crashed": false
+ }
+}

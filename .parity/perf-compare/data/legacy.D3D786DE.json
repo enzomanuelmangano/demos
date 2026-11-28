@@ -1,0 +1,483 @@
+{
+ "sculptures-in-words": {
+  "homeMB": 382,
+  "openMB": 515,
+  "idle": {
+   "cpu": 18.5,
+   "peakMB": 553
+  },
+  "interact": {
+   "cpu": 7.9,
+   "peakMB": 509
+  },
+  "crashed": false
+ },
+ "chessboard": {
+  "homeMB": 357,
+  "openMB": 508,
+  "idle": {
+   "cpu": 20,
+   "peakMB": 508
+  },
+  "interact": {
+   "cpu": 7.5,
+   "peakMB": 277
+  },
+  "crashed": false
+ },
+ "github-terrain": {
+  "homeMB": 441,
+  "openMB": 515,
+  "idle": {
+   "cpu": 7.1,
+   "peakMB": 510
+  },
+  "interact": {
+   "cpu": 19.4,
+   "peakMB": 468
+  },
+  "crashed": false
+ },
+ "sphere-waves": {
+  "homeMB": 147,
+  "openMB": 424,
+  "idle": {
+   "cpu": 122.4,
+   "peakMB": 455
+  },
+  "interact": {
+   "cpu": 18.1,
+   "peakMB": 557
+  },
+  "crashed": false
+ },
+ "liquid-glass-playground": {
+  "homeMB": 34,
+  "openMB": 403,
+  "idle": {
+   "cpu": 65.8,
+   "peakMB": 542
+  },
+  "interact": {
+   "cpu": 10.2,
+   "peakMB": 536
+  },
+  "crashed": false
+ },
+ "github-contributions": {
+  "homeMB": 473,
+  "openMB": 529,
+  "idle": {
+   "cpu": 8.7,
+   "peakMB": 529
+  },
+  "interact": {
+   "cpu": 22.4,
+   "peakMB": 530
+  },
+  "crashed": false
+ },
+ "ios-home-bouncy": {
+  "homeMB": 343,
+  "openMB": 429,
+  "idle": {
+   "cpu": 11.7,
+   "peakMB": 435
+  },
+  "interact": {
+   "cpu": 23.5,
+   "peakMB": 439
+  },
+  "crashed": true
+ },
+ "sudoku": {
+  "homeMB": 18,
+  "openMB": 498,
+  "idle": {
+   "cpu": 5.6,
+   "peakMB": 498
+  },
+  "interact": {
+   "cpu": 14.7,
+   "peakMB": 495
+  },
+  "crashed": false
+ },
+ "composable-text": {
+  "homeMB": 12,
+  "openMB": 424,
+  "idle": {
+   "cpu": 36.1,
+   "peakMB": 458
+  },
+  "interact": {
+   "cpu": 17.5,
+   "peakMB": 441
+  },
+  "crashed": false
+ },
+ "everybody-can-cook": {
+  "homeMB": 254,
+  "openMB": 558,
+  "idle": {
+   "cpu": 37.5,
+   "peakMB": 568
+  },
+  "interact": {
+   "cpu": 19.8,
+   "peakMB": 568
+  },
+  "crashed": false
+ },
+ "stacked-modals": {
+  "homeMB": 441,
+  "openMB": 527,
+  "idle": {
+   "cpu": 18.8,
+   "peakMB": 520
+  },
+  "interact": {
+   "cpu": 16.5,
+   "peakMB": 531
+  },
+  "crashed": false
+ },
+ "bezier-curve-outline": {
+  "homeMB": 23,
+  "openMB": 390,
+  "idle": {
+   "cpu": 27.7,
+   "peakMB": 424
+  },
+  "interact": {
+   "cpu": 22.1,
+   "peakMB": 462
+  },
+  "crashed": false
+ },
+ "delete-button": {
+  "homeMB": 473,
+  "openMB": 551,
+  "idle": {
+   "cpu": 1.4,
+   "peakMB": 551
+  },
+  "interact": {
+   "cpu": 13.4,
+   "peakMB": 541
+  },
+  "crashed": false
+ },
+ "duration-slider": {
+  "homeMB": 507,
+  "openMB": 538,
+  "idle": {
+   "cpu": 4.5,
+   "peakMB": 539
+  },
+  "interact": {
+   "cpu": 6.9,
+   "peakMB": 509
+  },
+  "crashed": false
+ },
+ "pomodoro-timer": {
+  "homeMB": 287,
+  "openMB": 339,
+  "idle": {
+   "cpu": 49.3,
+   "peakMB": 483
+  },
+  "interact": {
+   "cpu": 14.2,
+   "peakMB": 495
+  },
+  "crashed": false
+ },
+ "paper-folding": {
+  "homeMB": 497,
+  "openMB": 550,
+  "idle": {
+   "cpu": 12.7,
+   "peakMB": 550
+  },
+  "interact": {
+   "cpu": 18.7,
+   "peakMB": 506
+  },
+  "crashed": false
+ },
+ "interaction-appearance": {
+  "homeMB": 60,
+  "openMB": 552,
+  "idle": {
+   "cpu": 19.8,
+   "peakMB": 557
+  },
+  "interact": {
+   "cpu": 13.5,
+   "peakMB": 558
+  },
+  "crashed": false
+ },
+ "atlas-button": {
+  "homeMB": 291,
+  "openMB": 408,
+  "idle": {
+   "cpu": 45.5,
+   "peakMB": 464
+  },
+  "interact": {
+   "cpu": 11.3,
+   "peakMB": 464
+  },
+  "crashed": false
+ },
+ "geometry-button": {
+  "homeMB": 21,
+  "openMB": 331,
+  "idle": {
+   "cpu": 44.6,
+   "peakMB": 362
+  },
+  "interact": {
+   "cpu": 38.3,
+   "peakMB": 460
+  },
+  "crashed": false
+ },
+ "twodos-slide": {
+  "homeMB": 67,
+  "openMB": 367,
+  "idle": {
+   "cpu": 44.2,
+   "peakMB": 418
+  },
+  "interact": {
+   "cpu": 23.4,
+   "peakMB": 437
+  },
+  "crashed": false
+ },
+ "prequel-slider": {
+  "homeMB": 170,
+  "openMB": 416,
+  "idle": {
+   "cpu": 17.6,
+   "peakMB": 519
+  },
+  "interact": {
+   "cpu": 22.8,
+   "peakMB": 488
+  },
+  "crashed": false
+ },
+ "staggered-card-number": {
+  "homeMB": 92,
+  "openMB": 284,
+  "idle": {
+   "cpu": 54.1,
+   "peakMB": 439
+  },
+  "interact": {
+   "cpu": 16.3,
+   "peakMB": 469
+  },
+  "crashed": false
+ },
+ "fibonacci-shader-grid": {
+  "homeMB": 124,
+  "openMB": 444,
+  "idle": {
+   "cpu": 29.2,
+   "peakMB": 475
+  },
+  "interact": {
+   "cpu": 20.7,
+   "peakMB": 450
+  },
+  "crashed": false
+ },
+ "fibonacci-shader": {
+  "homeMB": 358,
+  "openMB": 443,
+  "idle": {
+   "cpu": 44.8,
+   "peakMB": 519
+  },
+  "interact": {
+   "cpu": 22.2,
+   "peakMB": 497
+  },
+  "crashed": false
+ },
+ "slide-to-reveal": {
+  "homeMB": 181,
+  "openMB": 292,
+  "idle": {
+   "cpu": 41.2,
+   "peakMB": 473
+  },
+  "interact": {
+   "cpu": 16.9,
+   "peakMB": 471
+  },
+  "crashed": false
+ },
+ "steddy-graph-interaction": {
+  "homeMB": 65,
+  "openMB": 334,
+  "idle": {
+   "cpu": 40.2,
+   "peakMB": 395
+  },
+  "interact": {
+   "cpu": 9.6,
+   "peakMB": 387
+  },
+  "crashed": false
+ },
+ "skia-color-picker": {
+  "homeMB": 25,
+  "openMB": 288,
+  "idle": {
+   "cpu": 39,
+   "peakMB": 435
+  },
+  "interact": {
+   "cpu": 8.6,
+   "peakMB": 465
+  },
+  "crashed": false
+ },
+ "github-onboarding": {
+  "homeMB": 42,
+  "openMB": 403,
+  "idle": {
+   "cpu": 25.6,
+   "peakMB": 441
+  },
+  "interact": {
+   "cpu": 12.9,
+   "peakMB": 392
+  },
+  "crashed": false
+ },
+ "split-button": {
+  "homeMB": 18,
+  "openMB": 403,
+  "idle": {
+   "cpu": 76.6,
+   "peakMB": 461
+  },
+  "interact": {
+   "cpu": 6.5,
+   "peakMB": 457
+  },
+  "crashed": false
+ },
+ "radar-chart": {
+  "homeMB": 15,
+  "openMB": 477,
+  "idle": {
+   "cpu": 7.1,
+   "peakMB": 476
+  },
+  "interact": {
+   "cpu": 8.1,
+   "peakMB": 437
+  },
+  "crashed": false
+ },
+ "animated-3d-parallax": {
+  "homeMB": 298,
+  "openMB": 519,
+  "idle": {
+   "cpu": 48.8,
+   "peakMB": 538
+  },
+  "interact": {
+   "cpu": 9,
+   "peakMB": 516
+  },
+  "crashed": false
+ },
+ "floating-modal": {
+  "homeMB": 24,
+  "openMB": 430,
+  "idle": {
+   "cpu": 13.5,
+   "peakMB": 440
+  },
+  "interact": {
+   "cpu": 19,
+   "peakMB": 426
+  },
+  "crashed": false
+ },
+ "story-list": {
+  "homeMB": 12,
+  "openMB": 364,
+  "idle": {
+   "cpu": 31.3,
+   "peakMB": 377
+  },
+  "interact": {
+   "cpu": 33.2,
+   "peakMB": 465
+  },
+  "crashed": false
+ },
+ "cuberto-slider": {
+  "homeMB": 17,
+  "openMB": 276,
+  "idle": {
+   "cpu": 31.6,
+   "peakMB": 369
+  },
+  "interact": {
+   "cpu": 36.9,
+   "peakMB": 397
+  },
+  "crashed": false
+ },
+ "theme-canvas-animation": {
+  "homeMB": 154,
+  "openMB": 391,
+  "idle": {
+   "cpu": 35.7,
+   "peakMB": 454
+  },
+  "interact": {
+   "cpu": 3.9,
+   "peakMB": 426
+  },
+  "crashed": false
+ },
+ "scroll-progress": {
+  "homeMB": 502,
+  "openMB": 529,
+  "idle": {
+   "cpu": 1.4,
+   "peakMB": 529
+  },
+  "interact": {
+   "cpu": 14.6,
+   "peakMB": 510
+  },
+  "crashed": false
+ },
+ "mobile-input": {
+  "homeMB": 460,
+  "openMB": 524,
+  "idle": {
+   "cpu": 14.8,
+   "peakMB": 553
+  },
+  "interact": {
+   "cpu": 15.5,
+   "peakMB": 526
+  },
+  "crashed": false
+ }
+}
