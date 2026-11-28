@@ -1,3 +1,71 @@
+# Upgrade to Exact 1fe690b4 (2026-11-28), from 4e87aee1
+
+27 upstream commits (main at 1fe690b4, "A list is live by the report that confirms its settled rows"). The reason is
+ae34e8b6a (expo/exact#2131, our report): /apps' ghost waited for 12 shaders fetched one after another (~180 ms each on
+reactiive.io from Italy, 0.93 -> 3.06 s, first frame at 3.28 s). `exact.mjs` and `.site/exact.mjs` name the new checkout
+(`~/.exact/exact2/1fe690b4...`, a worktree of the same object store, its `target`, `node_modules` and the Hermes
+installer's `target` APFS clones of 4e87aee1's; `cargo fetch --locked` once, for gif/image-webp). `update` and `lock`
+changed nothing else, for the app and the site.
+
+## What changed for us
+
+- **Shaders load in parallel, GPU loads retry** (ae34e8b6a): `loadShaders` is a `Promise.all`; the glue, gpu.js, the wasm
+  and every shader are retried on a network error or a 5xx (0.25, 0.5, 1 s), the glue imported again under a fresh URL,
+  and a boot whose retries are spent tries again on `online`. gpu-glue.js is one module with no static imports.
+- **The site's GPU guard keeps only `data-gpu`** (`.site/web/gpu-guard.js`, written into both heads by
+  `bun .site/tools/head.ts`, `--check` passes). Its fetch retries and glue re-imports would stack on Exact's (up to 16
+  tries per request), and its reload on a transient "no device" no longer fires (a transient failure now ends with
+  `recovery.status` "failed"). `data-gpu`: "none" without `navigator.gpu` or an adapter, "failed" for a permanent
+  failure, a glue that never registered (`exact.gpuFailedPermanent`, a journal `gpu:` line) or a boot whose retries
+  are spent; removed again when `gpuMs` arrives (a later `online`). `head.ts` finds the old or the new guard.
+- **/apps preloads its GPU module** (`.site/tools/gpu-preloads.ts`, in `bun run build`): with the shaders parallel,
+  the ghost still waited for four round trips after the runtime's boot (glue, gpu.js, wasm, shaders). An inline script
+  on /apps only adds low-priority modulepreloads (glue, gpu.js) and fetch preloads (wasm, 12 shaders) after Exact's own,
+  only where `navigator.gpu` exists (a browser without WebGPU never loads the module). Each is used once (one request
+  per file). Other pages: unchanged.
+- **The press-timing compose patch is gone** (`.site/tools/demos-web/patches.ts`): 3acfeab43 (expo/exact#2127)
+  ignores CSS-wide keywords in input-glue.js. Proved on the composed build: 45 presses on Pomodoro Timer's press
+  nodes with `--exact-press-timing: unset` forced, 0 exceptions.
+- **The Apple radius patch stays** (`.parity/exact-issues/radius-reduced.patch`): neither `Surface.swift` nor
+  `BorderPaint.swift` changed upstream; re-applied to the new checkout as is.
+
+## /apps first GPU frame (headed Chrome, local composed builds, Chrome adding 90 ms per request; median of 3)
+
+| | main (4e87aee1) | this upgrade, no preload | this upgrade |
+|---|---|---|---|
+| cold cache | 2.38 s | 1.19 s | 0.85 s |
+| warm cache | 2.07 s | 0.98 s | 0.63 s |
+
+Without added latency: cold 0.48 -> 0.36-0.52 s, warm 0.49 -> 0.34 s. reactiive.io today (faster than the 180 ms
+per shader measured earlier): cold 1.36 s, warm 0.97 s. The cost: on a cold cache with added latency the runtime's
+boot moved 0.37 -> 0.51-0.56 s (the local server is HTTP/1.1: 6 connections shared with the preloads); without
+latency, and warm, no change.
+
+## Checked, against main (4e87aee1) under the same conditions
+
+Both sides built here: the Demos app's Release build for the iPhone 17 simulator (D3D786DE, iOS 27.0; both run on it),
+and the site composed with its demos artifact, served locally (`tools/serve.ts`, main on :4311, this upgrade on :4310).
+
+- Demos app: `contract build app.contract --errors-only` 0 errors; iOS Release build (cargo 275 s, swift 49 s cold for
+  main); every one of the 109 demos opened by `demos-exact://demo/<slug>`, its first frame captured, one swipe, closed:
+  no crash on either build, same frames (3 first captures caught the launcher or the previous demo, a deep link landing
+  late; re-run on both: identical). Idle CPU past the warm-up: home 0.07 % on both (#174 holds); Sphere Waves 15.1 /
+  15.7 %, Chessboard 14.7 / 12.3 %, Sudoku 0.3 / 0.1 % (main / this).
+- Demos web app (/demos/app/demo/<slug>, headed Chrome, 390x844): 109 demos, same first frames, 0 page exceptions on
+  either; the only console errors are the audio player's two 404s (its gitignored track and cover), on both.
+- Site: head parity 174/174 against live; links 707/707 + 389 legacy (main 692: the 15 more are the preloaded GPU
+  files); sim-history, sim-read, sim-goto, mouse-scroll, composable-text, height-spring pass; sim-statusbar 3/3. On main,
+  mouse-scroll failed one check once ("a launcher drag released outside the phone settles on a page"), with three
+  other Chrome runs going at once; this upgrade passed it.
+- GPU faults (headless Chrome, CDP `Fetch.failRequest` once and twice): on /apps, the glue, gpu.js, the wasm and a
+  shader each failed: the ghost draws, no reload, nothing journaled. Main reloads the page when gpu.js fails (the old
+  guard), twice for two failures. /demos/app/demo/sphere-waves: glue, wasm and the shaders bundle failed once: draws on
+  both. Device loss (`Browser.crashGpuProcess`): /apps recovers and draws on both. A demo opened directly at
+  /demos/app/demo/<slug> (Sphere Waves, Chessboard) reports "recovered" but stays blank in headless Chrome after the
+  crash on both builds: not from this upgrade, not looked into further.
+- Not checked: a Vercel preview timeline (the preview sits behind Vercel's login); the Debug iOS build (the disk had
+  2-9 GB free; the Release build covers the native compile).
+
 # Upgrade to Exact 4e87aee1 (2026-11-28), from d885904c
 
 264 upstream commits (main at 4e87aee1, "Sample the session's update from the session view on iOS (#2121)").
