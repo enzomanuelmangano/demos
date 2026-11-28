@@ -1,0 +1,288 @@
+{
+ "sculptures-in-words": {
+  "homeMB": 258,
+  "openMB": 392,
+  "idle": {
+   "cpu": 2.2,
+   "peakMB": 392
+  },
+  "interact": {
+   "cpu": 13.9,
+   "peakMB": 392
+  },
+  "crashed": false
+ },
+ "github-contributions": {
+  "homeMB": 340,
+  "openMB": 403,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 403
+  },
+  "interact": {
+   "cpu": 18.5,
+   "peakMB": 404
+  },
+  "crashed": false
+ },
+ "stacked-modals": {
+  "homeMB": 320,
+  "openMB": 339,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 339
+  },
+  "interact": {
+   "cpu": 3.3,
+   "peakMB": 312
+  },
+  "crashed": false
+ },
+ "paper-folding": {
+  "homeMB": 369,
+  "openMB": 366,
+  "idle": {
+   "cpu": 0.7,
+   "peakMB": 367
+  },
+  "interact": {
+   "cpu": 7.9,
+   "peakMB": 360
+  },
+  "crashed": false
+ },
+ "prequel-slider": {
+  "homeMB": 297,
+  "openMB": 384,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 384
+  },
+  "interact": {
+   "cpu": 5.6,
+   "peakMB": 374
+  },
+  "crashed": false
+ },
+ "steddy-graph-interaction": {
+  "homeMB": 367,
+  "openMB": 405,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 405
+  },
+  "interact": {
+   "cpu": 5,
+   "peakMB": 406
+  },
+  "crashed": false
+ },
+ "animated-3d-parallax": {
+  "homeMB": 339,
+  "openMB": 405,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 405
+  },
+  "interact": {
+   "cpu": 11.9,
+   "peakMB": 405
+  },
+  "crashed": false
+ },
+ "scroll-progress": {
+  "homeMB": 340,
+  "openMB": 379,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 379
+  },
+  "interact": {
+   "cpu": 10.8,
+   "peakMB": 379
+  },
+  "crashed": false
+ },
+ "blur-cards": {
+  "homeMB": 367,
+  "openMB": 403,
+  "idle": {
+   "cpu": 0,
+   "peakMB": 403
+  },
+  "interact": {
+   "cpu": 8.6,
+   "peakMB": 404
+  },
+  "crashed": false
+ },
+ "threads-holo-ticket": {
+  "homeMB": 291,
+  "openMB": 363,
+  "idle": {
+   "cpu": 0.5,
+   "peakMB": 363
+  },
+  "interact": {
+   "cpu": 8.8,
+   "peakMB": 362
+  },
+  "crashed": false
+ },
+ "exclusion-tabs": {
+  "homeMB": 340,
+  "openMB": 407,
+  "idle": {
+   "cpu": 0,
+   "peakMB": 407
+  },
+  "interact": {
+   "cpu": 4.6,
+   "peakMB": 407
+  },
+  "crashed": false
+ },
+ "wheel-picker": {
+  "homeMB": 340,
+  "openMB": 403,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 403
+  },
+  "interact": {
+   "cpu": 47,
+   "peakMB": 404
+  },
+  "crashed": false
+ },
+ "fractal-glass": {
+  "homeMB": 340,
+  "openMB": 403,
+  "idle": {
+   "cpu": 3.8,
+   "peakMB": 403
+  },
+  "interact": {
+   "cpu": 7,
+   "peakMB": 308
+  },
+  "crashed": false
+ },
+ "selectable-grid-list": {
+  "homeMB": 363,
+  "openMB": 396,
+  "idle": {
+   "cpu": 1.2,
+   "peakMB": 397
+  },
+  "interact": {
+   "cpu": 11.6,
+   "peakMB": 398
+  },
+  "crashed": false
+ },
+ "add-to-cart": {
+  "homeMB": 367,
+  "openMB": 414,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 414
+  },
+  "interact": {
+   "cpu": 9.6,
+   "peakMB": 415
+  },
+  "crashed": false
+ },
+ "notion-qrcode": {
+  "homeMB": 340,
+  "openMB": 418,
+  "idle": {
+   "cpu": 14.9,
+   "peakMB": 418
+  },
+  "interact": {
+   "cpu": 18.6,
+   "peakMB": 418
+  },
+  "crashed": false
+ },
+ "clock-time-picker": {
+  "homeMB": 340,
+  "openMB": 345,
+  "idle": {
+   "cpu": 0,
+   "peakMB": 345
+  },
+  "interact": {
+   "cpu": 3.6,
+   "peakMB": 352
+  },
+  "crashed": false
+ },
+ "motion-blur": {
+  "homeMB": 315,
+  "openMB": 370,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 370
+  },
+  "interact": {
+   "cpu": 4.7,
+   "peakMB": 374
+  },
+  "crashed": false
+ },
+ "imessage-stack": {
+  "homeMB": 340,
+  "openMB": 405,
+  "idle": {
+   "cpu": 0,
+   "peakMB": 405
+  },
+  "interact": {
+   "cpu": 10.6,
+   "peakMB": 406
+  },
+  "crashed": false
+ },
+ "balance-slider": {
+  "homeMB": 340,
+  "openMB": 405,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 405
+  },
+  "interact": {
+   "cpu": 10.2,
+   "peakMB": 405
+  },
+  "crashed": false
+ },
+ "fourier-visualizer": {
+  "homeMB": 340,
+  "openMB": 405,
+  "idle": {
+   "cpu": 0,
+   "peakMB": 405
+  },
+  "interact": {
+   "cpu": 22.2,
+   "peakMB": 407
+  },
+  "crashed": false
+ },
+ "shared-transitions": {
+  "homeMB": 340,
+  "openMB": 410,
+  "idle": {
+   "cpu": 0.2,
+   "peakMB": 410
+  },
+  "interact": {
+   "cpu": 7,
+   "peakMB": 411
+  },
+  "crashed": false
+ }
+}
