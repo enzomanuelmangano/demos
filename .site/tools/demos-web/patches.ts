@@ -18,7 +18,7 @@ export const PATCHES: Patch[] = [
     // writes the word `unset` there when the node's transition has no press entry (host/web-js/src/rows.rs: an empty
     // value is written as "unset"). JSON.parse("unset") throws on every press of such a node: the press animation is
     // lost and Sentry fills (REACTIIVE-PROD-6K, 6M: Pomodoro Timer, Chrome 158). `unset` reads as no timing, which is
-    // what an empty value already meant. Reported upstream; drop this patch when the pinned Exact carries the fix.
+    // what an empty value already meant. Reported as expo/exact#2127; drop this patch when the pinned Exact carries the fix.
     file: /^input-glue-[\w-]+\.js$/,
     why: 'a press on a node whose --exact-press-timing is "unset" throws in JSON.parse',
     edits: [[
