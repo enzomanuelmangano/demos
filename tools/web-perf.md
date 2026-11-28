@@ -407,8 +407,9 @@ on our side, web only, nothing in Exact touched:
   event on a package's files as an edit and a build reads a package's `.json` files, so a `.json` bundle set every
   dev build aside in a loop.
 - A head script in app.json (`host.web.head`) wraps `fetch`: the GPU module's `gpu_bg.wasm` fetch starts the bundle's
-  (`cache: 'no-cache'`, revalidated), and each one-argument fetch of `<base>/shaders/<name>.wgsl` is answered from it
-  with a `Response`. A name the bundle lacks, or a bundle that fails, falls through to the glue's own fetch (checked:
+  (`cache: 'no-cache'`, revalidated), and each fetch of `<base>/shaders/<name>.wgsl` with no init, or with an init that
+  holds only a `signal` (Exact 1fe690b4's `fetchText` passes one), is answered from it with a `Response` (an aborted
+  signal falls through to the real fetch, which rejects). A name the bundle lacks, or a bundle that fails, falls through to the glue's own fetch (checked:
   bundle removed, paper-folding draws the same pixels). The dev loop never fetches shaders (`exact.devAssets`), so
   nothing changes there.
 
