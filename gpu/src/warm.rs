@@ -6,11 +6,14 @@
 //! surface into an offscreen target (recorded, never submitted: see [`warm`]), one at a time with
 //! a pause between, so the compiled shaders are in the device's caches before a demo opens.
 //! [`prioritize`] moves one demo to the front (the finger is down on its icon).
+//!
+//! The canvas's one input says whether the home is on top. While a demo is open the thread warms only
+//! the demo at the front (the icon last touched) and then parks until the home comes back: the warm-up
+//! took ~25 s of a fifth of a core after launch, all of it spent while the open demo sat still.
 
 use std::collections::VecDeque;
 #[cfg(not(target_arch = "wasm32"))]
 use std::panic::{catch_unwind, AssertUnwindSafe};
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 #[cfg(not(target_arch = "wasm32"))]
@@ -28,7 +31,7 @@ const HEIGHT: f32 = 844.0;
 #[cfg(not(target_arch = "wasm32"))]
 const PAUSE: Duration = Duration::from_millis(60);
 
-/// The surface: draws nothing; its first frame starts the warm-up.
+/// The surface: draws nothing; its first frame starts the warm-up. Its input: the home is on top.
 pub fn surface() -> Box<dyn Surface> {
     Box::new(Warm { started: false })
 }
@@ -38,7 +41,11 @@ struct Warm {
 }
 
 impl Surface for Warm {
-    fn bind(&mut self, _: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+    fn bind(&mut self, inputs: &[Value], _: Option<f64>) -> Result<(), SurfaceError> {
+        if let Some(home) = inputs.first().and_then(|v| v.as_bool()) {
+            HOME.store(home, Ordering::Release);
+            wake();
+        }
         Ok(())
     }
 
@@ -61,6 +68,19 @@ impl Surface for Warm {
 
 #[cfg(not(target_arch = "wasm32"))]
 static STARTED: AtomicBool = AtomicBool::new(false);
+/// The home is on top: the warm-up may build every demo, not only the front's.
+static HOME: AtomicBool = AtomicBool::new(true);
+/// The warm-up's thread, unparked when the home comes back or an icon is touched.
+#[cfg(not(target_arch = "wasm32"))]
+static THREAD: std::sync::OnceLock<std::thread::Thread> = std::sync::OnceLock::new();
+
+/// Wakes a parked warm-up to look at the home and the front again.
+fn wake() {
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(thread) = THREAD.get() {
+        thread.unpark();
+    }
+}
 /// The demos to warm before the rest, most recent first.
 static FRONT: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
 
@@ -70,6 +90,8 @@ pub fn prioritize(slug: &str) {
     let mut front = FRONT.lock().unwrap_or_else(|e| e.into_inner());
     front.retain(|k| *k != key);
     front.push_front(key);
+    drop(front);
+    wake();
 }
 
 /// Whether surface `name` belongs to the demo `key`: its own, or a companion (`sudoku_backdrop`).
@@ -84,6 +106,8 @@ fn start(device: wgpu::Device, queue: wgpu::Queue) {
         return;
     }
     let _ = std::thread::Builder::new().name("demos-gpu-warm".into()).spawn(move || {
+        // Set before the first look at the home, so no `wake` can miss the thread.
+        let _ = THREAD.set(std::thread::current());
         lower_priority();
         run(&device, &queue);
     });
@@ -107,17 +131,34 @@ fn run(device: &wgpu::Device, queue: &wgpu::Queue) {
     let mut done: Vec<&'static str> = Vec::new();
     let surfaces = crate::REGISTRY.surfaces;
     loop {
-        // The demo the finger is on, else the next one in the registry.
+        // The demo the finger is on, else (only while the home is on top) the next one in the registry.
+        let rest = |n: &&str| !done.contains(n) && *n != "warm" && *n != "timer";
         let front = FRONT.lock().unwrap_or_else(|e| e.into_inner()).front().cloned();
-        let next = front
-            .and_then(|key| surfaces.iter().map(|s| s.0).find(|n| !done.contains(n) && *n != "warm" && belongs(n, &key)))
-            .or_else(|| surfaces.iter().map(|s| s.0).find(|n| !done.contains(n) && *n != "warm" && *n != "timer"));
+        let next = front.and_then(|key| surfaces.iter().map(|s| s.0).find(|n| !done.contains(n) && *n != "warm" && belongs(n, &key))).or_else(|| {
+            if HOME.load(Ordering::Acquire) {
+                surfaces.iter().map(|s| s.0).find(rest)
+            } else {
+                None
+            }
+        });
         let Some(name) = next else {
-            // The front's demos are done: drop them and finish if nothing is left.
             let mut front = FRONT.lock().unwrap_or_else(|e| e.into_inner());
-            if front.pop_front().is_none() {
+            if HOME.load(Ordering::Acquire) {
+                // Everything is done: drop the front's demos and finish.
+                if front.pop_front().is_some() {
+                    continue;
+                }
+            } else if !front.is_empty() {
+                // A demo is open and its surfaces are done: older touches wait for the home like the rest.
+                front.clear();
+                continue;
+            }
+            drop(front);
+            if !surfaces.iter().map(|s| s.0).any(|n| rest(&n)) {
                 return;
             }
+            // A demo is open: sleep until the home comes back or an icon is touched (`wake`).
+            std::thread::park();
             continue;
         };
         done.push(name);

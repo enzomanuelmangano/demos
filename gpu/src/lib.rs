@@ -212,7 +212,7 @@ pub static REGISTRY: Registry = Registry {
         ("timer", 2, timer::surface),
         ("twodos_slide", 0, twodos_slide::surface),
         ("verification_code_face", 6, verification_code_face::surface),
-        ("warm", 0, warm::surface),
+        ("warm", 1, warm::surface),
         ("wheel_picker", 1, wheel_picker::surface),
     ],
     shaders: shaders::SHADERS,
