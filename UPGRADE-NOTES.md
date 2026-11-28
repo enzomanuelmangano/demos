@@ -26,6 +26,13 @@ changed nothing else, for the app and the site.
 - **The press-timing compose patch is gone** (`.site/tools/demos-web/patches.ts`): 3acfeab43 (expo/exact#2127)
   ignores CSS-wide keywords in input-glue.js. Proved on the composed build: 45 presses on Pomodoro Timer's press
   nodes with `--exact-press-timing: unset` forced, 0 exceptions.
+- **The Demos app's shader bundle answers the new fetches** (`app.json` head, `tools/web-perf.md`): its fetch wrapper
+  served `shaders/<name>.wgsl` from `assets/demos-gpu-images/chunks/shaders.wgsl` only for a fetch with no init, and
+  the new `fetchText` passes `{ signal }`. Found by the regression check: every demo load fetched all 55 shaders one by
+  one (GPU ready 1.87 -> 2.31 s for Sphere Waves with 90 ms per request). The wrapper now also takes an init with only a
+  signal (an aborted one falls through to the real fetch). With it, 0 shader requests, and GPU ready, navigation to
+  `data-gpu-ms`, median of 4, cold, 90 ms per request: Sphere Waves 1.88 -> 1.29 s, Chessboard 1.88 -> 1.30 s (gpu.js
+  is no longer behind the glue's static imports); without added latency 0.29-0.30 s on both.
 - **The Apple radius patch stays** (`.parity/exact-issues/radius-reduced.patch`): neither `Surface.swift` nor
   `BorderPaint.swift` changed upstream; re-applied to the new checkout as is.
 
@@ -59,8 +66,9 @@ and the site composed with its demos artifact, served locally (`tools/serve.ts`,
   other Chrome runs going at once; this upgrade passed it.
 - GPU faults (headless Chrome, CDP `Fetch.failRequest` once and twice): on /apps, the glue, gpu.js, the wasm and a
   shader each failed: the ghost draws, no reload, nothing journaled. Main reloads the page when gpu.js fails (the old
-  guard), twice for two failures. /demos/app/demo/sphere-waves: glue, wasm and the shaders bundle failed once: draws on
-  both. Device loss (`Browser.crashGpuProcess`): /apps recovers and draws on both. A demo opened directly at
+  guard), twice for two failures. /demos/app/demo/sphere-waves: the glue, the wasm, and the shaders bundle (once, and twice: then each shader is
+  fetched on its own) failed: the GPU comes up on both; a capture 9 s in sometimes still shows no sphere when the load
+  took the slow path, on both builds alike. Device loss (`Browser.crashGpuProcess`): /apps recovers and draws on both. A demo opened directly at
   /demos/app/demo/<slug> (Sphere Waves, Chessboard) reports "recovered" but stays blank in headless Chrome after the
   crash on both builds: not from this upgrade, not looked into further.
 - Not checked: a Vercel preview timeline (the preview sits behind Vercel's login); the Debug iOS build (the disk had
