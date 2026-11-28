@@ -182,6 +182,7 @@ component Demos
   // The GPU module loads when the first canvas exists (shader registry, device: ~85 ms on the simulator),
   // which was the first Rust demo's open. A 1 px canvas on the home, mounted once the home has settled,
   // loads it there, and its surface (gpu/src/warm.rs) then compiles every demo's pipelines in the background.
+  // Its input: the home is on top. While a demo is open only that demo's pipelines are built, the rest wait.
   state gpuWarm = false
   action warmGpu
     gpuWarm = true
@@ -299,13 +300,13 @@ component Demos
             WebShell(demos=demos, all=allDemos(), env=env, slug="", zone="", framed=framed, vw=host.width, vh=host.height,
               safeTop=host.safeAreaTop, safeBottom=host.safeAreaBottom, open=openFlown, flown=flown, leave=back)
             if gpuWarm
-              canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
+              canvas surface=warm(top(nav).name == "home") width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
                 aria-hidden=true testId="gpu-warm"
         if e.name == "home" and not desk and not web
           column navigationKey=`${e.id}` navigationBar="none" -exact-safe-area="none" position="absolute" inset=0
             Springboard(demos=demos, changed=changedSlugs, open=open)
             if gpuWarm
-              canvas surface=warm() width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
+              canvas surface=warm(top(nav).name == "home") width=1 height=1 position="absolute" left=0 top=0 pointer-events="none"
                 aria-hidden=true testId="gpu-warm"
             // A Mac (a fine pointer) files this under View; the iPhone's home is unchanged.
             if host.pointer == "fine"
