@@ -25,6 +25,20 @@
 >
 > Suspect samples: in cuberto-slider, add-to-cart and bottom-bar-skia (Exact), and in chessboard (RN), memory dropped by more than 40 % while interacting, which probably means the app went to the background. iOS Home Bouncy crashed in the RN app during the run.
 
+## App size (the same Release builds, iPhone 17 simulator, arm64)
+
+| | React Native (com.reactiive.app) | Exact (com.reactiive.demos.exact) | Exact vs RN |
+|---|---|---|---|
+| **Installed .app** | **255.2 MB** | **78.2 MB** | **−69 %** (3.3× smaller) |
+| zip -9 of the .app (rough download size) | 112.6 MB | 53.7 MB | −52 % |
+| main executable | 125.3 MB | 25.6 MB | |
+| Frameworks/ | 63.8 MB | 34.3 MB | |
+| assets/ (images, fonts, media) | 55.4 MB | 17.1 MB | |
+| JS bundle (main.jsbundle) | 9.9 MB | — | |
+| shaders/ | — | 0.4 MB | |
+
+Simulator builds are not App Store builds: they are not thinned per device, and the binaries are simulator slices. App Store download sizes will differ, but the ratio between the two apps is indicative. Exact here is d885904c, the build that was measured.
+
 ## Summary
 
 **109 demos** measured on both apps.
