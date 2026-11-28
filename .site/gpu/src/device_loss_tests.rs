@@ -30,11 +30,35 @@ fn survives(name: &str, make: fn() -> Box<dyn Surface>, inputs: &[Value], frame:
     let mut s = make();
     s.bind(inputs, None).unwrap();
     fixture::render(&a, s.as_mut(), &frame).unwrap();
-    s.device_lost();
+    assert!(s.device_lost(), "{name}: recovers in place");
     let (after, _) = fixture::render(&b, s.as_mut(), &frame).unwrap();
     let mut fresh = make();
     fresh.bind(inputs, None).unwrap();
     let (want, _) = fixture::render(&b, fresh.as_mut(), &frame).unwrap();
+    same(name, &after, &want);
+}
+
+/// The same, its first frame (`first`) on device A and the next (`then`) on device B, against a surface that drew
+/// both on B: for a surface whose picture depends on how long it has been shown (`site` fades in from its first frame).
+fn survives_then(name: &str, make: fn() -> Box<dyn Surface>, inputs: &[Value], first: Frame, then: Frame) {
+    let _one = crate::warm::per_device_test();
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
+    exact_gpu::shaders::load_dir(&dir, &crate::REGISTRY).unwrap();
+    let Some(a) = fixture::device_or_skip(fixture::device()) else { return };
+    let Some(b) = fixture::device_or_skip(fixture::device()) else { return };
+    let mut s = make();
+    s.bind(inputs, None).unwrap();
+    fixture::render(&a, s.as_mut(), &first).unwrap();
+    assert!(s.device_lost(), "{name}: recovers in place");
+    let (after, _) = fixture::render(&b, s.as_mut(), &then).unwrap();
+    let mut fresh = make();
+    fresh.bind(inputs, None).unwrap();
+    fixture::render(&b, fresh.as_mut(), &first).unwrap();
+    let (want, _) = fixture::render(&b, fresh.as_mut(), &then).unwrap();
+    same(name, &after, &want);
+}
+
+fn same(name: &str, after: &fixture::Pixels, want: &fixture::Pixels) {
     assert!(after.data.iter().any(|&v| v != 0), "{name}: drew nothing on the new device");
     let diff = after.data.iter().zip(&want.data).map(|(x, y)| x.abs_diff(*y)).max().unwrap_or(0);
     assert!(diff <= 2, "{name}: the new device's picture differs by {diff}");
@@ -64,4 +88,16 @@ fn arena_s_floor_draws_on_the_new_device() {
 #[test]
 fn home_s_ghost_draws_on_the_new_device() {
     survives("hero", crate::hero::hero, &[n(0.26), n(1.0), n(1.0)], frame(152.0, 152.0, 1000.0));
+}
+
+// The two surfaces the site registers (lib.rs REGISTRY): what reactiive.io's /apps draws.
+#[test]
+fn apps_setup_ghost_draws_on_the_new_device() {
+    let inputs = [n(0.0), n(0.0), n(0.0), n(0.0), n(0.0), n(0.0), n(0.0), n(0.0), n(0.62), n(0.94), n(1.0)];
+    survives_then("site", crate::site::site, &inputs, frame(190.0, 190.0, 1000.0), frame(190.0, 190.0, 1400.0));
+}
+
+#[test]
+fn apps_intro_stage_draws_on_the_new_device() {
+    survives("ghost", crate::ghost::ghost, &[Value::str("dark"), n(0.0)], frame(420.0, 600.0, 1000.0));
 }

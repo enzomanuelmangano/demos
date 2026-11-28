@@ -1,13 +1,6 @@
 import type { Answer, Draw, Result, Sources } from './app.contract.d.ts';
 import * as content from './content-gen/index.ts';
 
-// Exact d885904c boots the view at build time (prerender) without a `CSS` global, and its modes code calls
-// `CSS.escape` unguarded (host/web-js/modes.js). There only, the two calls the runtime makes: an identifier escape
-// and a permissive `supports` (keep every value, as the browser would for the site's own CSS). Browsers have `CSS`.
-if (typeof (globalThis as { CSS?: unknown }).CSS === 'undefined') {
-  (globalThis as { CSS?: unknown }).CSS = { escape: (s: string) => String(s).replace(/[^\w-]/g, (c) => `\\${c}`), supports: () => true };
-}
-
 // The newsletter posts to the public subscribe endpoint (no secret: subs.reactiive.io's own server holds the
 // Beehiiv key). Nothing else here reaches the network.
 const SUBSCRIBE = 'https://subs.reactiive.io/api/subscribe';

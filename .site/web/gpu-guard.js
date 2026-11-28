@@ -7,9 +7,10 @@
    2. The GPU glue's import failing (it or one of its static imports) leaves only a journal line (`gpu: ...`, with
       exact.gpu never set); it is imported again, up to 3 times (1, 3, 6 s). A failed module fetch is not cached by
       the browser, so the same URL loads.
-   3. A load that ends "no device" because a request failed (the module itself, past the retries) reloads the page, as
-      does a device lost for a reason other than its own destroy() (#170). At most 2 reloads in 10 minutes, counted in
-      window.name. A load failing for another reason (the device's limits, the build) does not reload.
+   3. A load that ends "no device" because a request failed (the module itself, past the retries) reloads the page. At
+      most 2 reloads in 10 minutes, counted in window.name. A load failing for another reason (the device's limits, the
+      build) does not reload. A lost device does not reload either: Exact recovers its open surfaces in place on the
+      replacement device since 4e87aee1 (a63357bec, expo/exact#2086), and a reload would throw that recovery away.
    4. No adapter (a browser or GPU without WebGPU): <html data-gpu="none">; a load that fails for good (not a request,
       or still failing once the reloads are spent): <html data-gpu="failed">. Either lets a page show a still instead of an empty stage (web/head.css). */
 (function () {
@@ -27,16 +28,6 @@
   }
   /* A load failure a reload can fix: a request that failed (any browser's wording), not the device or the build. */
   function transient(text) { return /fetch|import|network|load failed|HTTP 5\d\d|timed? ?out/i.test(String(text || '')); }
-  /* 3 (device lost): a device lost for a reason other than its own destroy() reloads the page. */
-  if (window.GPUAdapter && GPUAdapter.prototype.requestDevice) {
-    var R = GPUAdapter.prototype.requestDevice, lostDone = false;
-    GPUAdapter.prototype.requestDevice = function () {
-      return R.apply(this, arguments).then(function (d) {
-        d.lost.then(function (i) { if (lostDone || !i || i.reason === 'destroyed') return; lostDone = reload(); });
-        return d;
-      });
-    };
-  }
   /* 1: the GPU module's and the shaders' fetches. */
   var F = window.fetch;
   if (F) window.fetch = function (input, init) {

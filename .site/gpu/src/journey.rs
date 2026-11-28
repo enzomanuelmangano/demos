@@ -497,11 +497,12 @@ impl UnitSurface {
 impl Surface for UnitSurface {
     /// The device was lost (exact-gpu `Module::lose_device`; recovery gives this surface a new one):
     /// drop every resource of the old device, so the next render builds on the new one.
-    fn device_lost(&mut self) {
+    fn device_lost(&mut self) -> bool {
         // The renderer's buffers, targets, bind group and shared programs, and the atlas's texture.
         self.renderer = Renderer::default();
         self.shared = None;
         self.images = None;
+        true
     }
 
     fn max_fps(&self) -> u32 {

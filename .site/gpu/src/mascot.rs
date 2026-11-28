@@ -761,9 +761,10 @@ impl MascotSurface {
 impl Surface for MascotSurface {
     /// The device was lost (exact-gpu `Module::lose_device`; recovery gives this surface a new one):
     /// drop every resource of the old device, so the next render builds on the new one.
-    fn device_lost(&mut self) {
+    fn device_lost(&mut self) -> bool {
         self.gpu = None;
         self.probe.device_lost();
+        true
     }
 
     /// A new size frames it again: its stillness counts from the next frame.

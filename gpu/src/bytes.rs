@@ -311,8 +311,11 @@ mod web {
         fn device_ready(&mut self, features: wgpu::Features, limits: wgpu::Limits) {
             self.inner.device_ready(features, limits)
         }
-        fn device_lost(&mut self) {
+        fn device_lost(&mut self) -> bool {
             self.inner.device_lost()
+        }
+        fn set_waker(&mut self, waker: exact_gpu::SurfaceWaker) {
+            self.inner.set_waker(waker)
         }
         fn retier(&mut self) -> bool {
             self.inner.retier()
