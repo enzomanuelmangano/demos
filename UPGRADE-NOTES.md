@@ -1,3 +1,40 @@
+# Upgrade to Exact 4e87aee1 (2026-11-28), from d885904c
+
+264 upstream commits (main at 4e87aee1, "Sample the session's update from the session view on iOS (#2121)").
+`exact.mjs` and `.site/exact.mjs` name the new checkout (`~/.exact/exact2/4e87aee1...`, a worktree of the d885904c
+checkout's object store, its `target`, `node_modules` and the Hermes installer's `target` APFS clones);
+`bun exact.mjs update` changed nothing else; `bun exact.mjs lock` adds `ring` to `exact-js`'s dependencies.
+
+## What broke, and the fixes
+
+- **exact-gpu's `Surface::device_lost` returns a bool** (a63357bec, expo/exact#2086, our report): `false`, the
+  default, has the module drop the surface and build a fresh one from its factory on the replacement device (replaying
+  its configuration and last bind); `true` keeps the instance. The site's ten surfaces drop every handle of the lost
+  device (`.site/gpu/src/device_loss_tests.rs`, which now also asserts the `true`) and say `true`; the Demos app's
+  bytes wrapper (`gpu/src/bytes.rs`) forwards its inner surface's answer, and no demo overrides it, so every demo
+  surface is rebuilt. That is what fixes Sentry REACTIIVE-PROD-6F (Sphere Waves' "sphere waves uniforms" buffer used
+  with the replacement device): the old surface and its buffer are gone. The Demos app's Contract build has 0 errors;
+  the site needed nothing else.
+- **#170's reload on a lost device is gone** (both `app.json`s). Checked in headless Chrome with a real GPU process
+  crash (CDP `Browser.crashGpuProcess`) under an open Sphere Waves in the framed app at /demos/sphere-waves, the guard
+  disabled: the device is replaced, the demo keeps drawing and animating, Chessboard, Fractal Glass and Sphere Waves
+  open after it, 0 device errors, no reload; the site's /apps ghost recovers the same way. The same test on the
+  d885904c build (reactiive.io) crashes the frame's renderer. Kept, the guard would reload on every loss and throw
+  that recovery away; where recovery cannot help (Chrome turns WebGPU off after repeated GPU crashes, "no adapter"),
+  a reload cannot either.
+- **The site's `CSS` stand-in is gone** (`.site/app.ts`): 5c1f45735 (expo/exact#1926, our report) gives the build-time
+  prerender a `CSS` global and guards the runtime's calls. The site builds without it.
+- **The local Apple patch** (`.parity/exact-issues/radius-reduced.patch`): still not upstream (neither `Surface.swift`
+  nor `BorderPaint.swift` changed); applies as is, re-applied to the new checkout.
+- **Site patches to the Demos web artifact**: all five still apply; they patch the Demos app's own web module
+  (`modules/index.js`), not Exact, so no upgrade retires them.
+
+## Checked (site composed with the new demos artifact, served locally)
+
+head parity with live 173/173; links 691/691 + 389 legacy; sim-history, sim-read, sim-goto, mouse-scroll,
+composable-text, height-spring pass; sim-statusbar 5 of 5 runs on the final build (4 of 5 on the first, the first run
+after the server started, as on d885904c). iOS: see the PR.
+
 # Upgrade to Exact d885904c (2026-11-26), from 98ed61fb
 
 930 upstream commits (main at d885904c, "The web's safe-area rounds solve as the kernel's and measure at rest (#1888)").
